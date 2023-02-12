@@ -4,16 +4,15 @@ runs-on: self-hosted
 
 name: learn-github-actions
 
-run-name: test githubaction
+run-name: Running Tetris Tests
 
 on: [push]
 
 jobs:
-  check-bats-version:
+  tetris_tests:
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v3
-
       - run: ls -l
       - run: echo "hello"
       - run: docker --version
