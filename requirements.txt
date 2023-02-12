@@ -2,4 +2,4 @@ stable-baselines3==1.7.0
 gym==0.21.0
 matplotlib==3.6.3
 mlflow==2.1.1
-
+setuptools
