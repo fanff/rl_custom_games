@@ -11,8 +11,8 @@ WORKDIR /rl_test/
 ADD requirements.txt .
 RUN pip install -r requirements.txt
 
-COPY /custom_tetris .
-COPY /mlflow_cb .
+COPY /custom_tetris ./custom_tetris
+COPY /mlflow_cb ./mlflow_cb
 
 
 
