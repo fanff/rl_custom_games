@@ -3,7 +3,8 @@ import time
 import click
 from stable_baselines3 import PPO
 
-from rl_custom_games.custom_tetris.custom_tetris import CustomTetris, find_latest
+from rl_custom_games.custom_tetris.custom_tetris.custom_tetris import CustomTetris, find_latest
+
 
 @click.command
 @click.argument('model_path')

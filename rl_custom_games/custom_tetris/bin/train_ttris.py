@@ -4,7 +4,7 @@ from stable_baselines3 import A2C, PPO
 from stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback
 from stable_baselines3.common.env_util import make_vec_env
 
-from rl_custom_games.custom_tetris.custom_tetris import CustomTetris
+from rl_custom_games.custom_tetris.custom_tetris.custom_tetris import CustomTetris
 from rl_custom_games.mlflow_cb.mlflow_cb import MFLow
 
 

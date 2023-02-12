@@ -1,4 +1,4 @@
-from rl_custom_games.custom_tetris.custom_tetris import CustomTetris
+from rl_custom_games.custom_tetris.custom_tetris.custom_tetris import CustomTetris
 
 evalenv = CustomTetris()
 
