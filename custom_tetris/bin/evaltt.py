@@ -1,23 +1,22 @@
 import os
 import time
 
+import click
 from stable_baselines3 import A2C, PPO
 
 import logging
 
 from custom_tetris.custom_tetris.custom_tetris import CustomTetris, find_latest
 
-if __name__ == "__main__":
-    for i in range(120):
-        print()
-
-    evalenv = CustomTetris()
+@click.command
+@click.argument('model_path')
+def eval_tetris(model_path):
     idx=0
     while True:
         evalenv = CustomTetris()
 
         if idx%10 == 0:
-            modelpath = find_latest(path ="../../logs/ttppo35/")
+            modelpath = find_latest(path = model_path)
             model = PPO.load(modelpath, evalenv)
         idx+=1
         obs = evalenv.reset()
@@ -34,3 +33,5 @@ if __name__ == "__main__":
             if done:
                 break
 
+if __name__ == "__main__":
+    eval_tetris()
