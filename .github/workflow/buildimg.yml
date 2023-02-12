@@ -1,0 +1,19 @@
+
+
+runs-on: self-hosted
+
+name: learn-github-actions
+
+run-name: test githubaction
+
+on: [push]
+
+jobs:
+  check-bats-version:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v3
+
+      - run: ls -l
+      - run: echo "hello"
+      - run: docker --version
