@@ -31,6 +31,10 @@ class MFLow(BaseCallback):
     def _init_callback(self) -> None:
         # Create folder if needed
         import mlflow
+        exp = mlflow.get_experiment_by_name(self.name_prefix)
+        if exp is None:
+
+            mlflow.create_experiment(self.name_prefix)
         self.current_run = mlflow.start_run()
 
         self.model
