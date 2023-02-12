@@ -17,7 +17,7 @@ if __name__ == "__main__":
         evalenv = CustomTetris()
 
         if idx%10 == 0:
-            modelpath = find_latest(path = "./logs/ttppo35/")
+            modelpath = find_latest(path ="../../logs/ttppo35/")
             model = PPO.load(modelpath, evalenv)
         idx+=1
         obs = evalenv.reset()
