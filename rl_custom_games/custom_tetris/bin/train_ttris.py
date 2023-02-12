@@ -1,30 +1,38 @@
 import logging
 
+import click
 from stable_baselines3 import A2C, PPO
 from stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback
 from stable_baselines3.common.env_util import make_vec_env
+from stable_baselines3.common.vec_env import SubprocVecEnv
 
-from rl_custom_games.custom_tetris.custom_tetris.custom_tetris import CustomTetris
+from rl_custom_games.custom_tetris.custom_tetris.custom_tetris import CustomTetris, find_latest, VecTetris
 from rl_custom_games.mlflow_cb.mlflow_cb import MFLow
 
 
-if __name__ == "__main__":
+@click.command()
+@click.option("--model_idx", default="logs/default")
+@click.option("--n_envs", default=8, type=int)
+@click.option("--experiment_name", default="lk")
+@click.option("--parallel_env", default=False, type=bool)
+@click.option("--logfreq", default=1000, type=int)
+@click.option("--from_scratch", default=False, type=bool)
+def train_ttris(model_idx, n_envs, experiment_name, parallel_env, logfreq, from_scratch):
     logging.basicConfig(level=logging.INFO)
 
-    # env = CustomTetris()
-    # check_env(env, warn=True, skip_render_check=False)
-    # quit()
+    # env = make_vec_env(CustomTetris, n_envs=n_envs)
+    logger = logging.getLogger("ttrain")
 
-    model_idx = "logs/ttppo2"
-    env = make_vec_env(CustomTetris, n_envs=8)
-    logfreq = 1000
+    logger.info("model_idx: %s, n_envs: %s, experiment_name: %s, parallel_env: %s, logfreq: %s, from_scratch: %s",
+                model_idx, n_envs, experiment_name, parallel_env, logfreq, from_scratch)
+    if parallel_env:
+        env = SubprocVecEnv([CustomTetris] * n_envs)
+    else:
+        env = VecTetris([CustomTetris] * n_envs)
 
-
-    evalenv = CustomTetris()
-
-    eval_callback = EvalCallback(evalenv, best_model_save_path=f"./{model_idx}/",
-                                 log_path=f"./{model_idx}/", eval_freq=logfreq,
-                                 deterministic=True, render=False)
+    # eval_callback = EvalCallback(evalenv, best_model_save_path=f"./{model_idx}/",
+    #                              log_path=f"./{model_idx}/", eval_freq=logfreq,
+    #                              deterministic=True, render=False)
 
     checkpoint_callback = CheckpointCallback(
         save_freq=logfreq,
@@ -35,33 +43,18 @@ if __name__ == "__main__":
     )
 
     mlflow_callback = MFLow(freq=logfreq,
+                            experiment_name=experiment_name,
                             log_path=f"./{model_idx}/")
+    if not from_scratch:
+        model_toload = find_latest(path=f"{model_idx}/")
+        logger.info("loaded %s",model_toload)
+        model = PPO.load(model_toload, env)
+    else:
+        model = PPO("MlpPolicy", env, verbose=1, learning_rate=7e-4, )
 
-    #model_toload = find_latest(path=f"{model_idx}/")
-    #model = PPO.load(model_toload, env)
-    #model.learning_rate=7e-4
-    model = PPO("MlpPolicy", env, verbose=1,learning_rate=7e-4,)
-    #model = A2C("MlpPolicy", env,
-    #            learning_rate=7e-4,
-    #            n_steps = 10,
-    #            use_sde=False,
-    #            verbose=1)
-
-    model.learn(total_timesteps=300_000_000,callback=[eval_callback,checkpoint_callback,mlflow_callback])
-    model.save("ttmodel")
+    model.learn(total_timesteps=300_000_000, callback=[checkpoint_callback, mlflow_callback])
 
 
 
-
-
-    evalenv = CustomTetris()
-    model = A2C.load("ttmodel",evalenv)
-    obs = evalenv.reset()
-    for i in range(100):
-        print(i)
-        action, _state = model.predict(obs, deterministic=True)
-        obs, reward, done, info = evalenv.step(action)
-        evalenv.render("df")
-        # VecEnv resets automatically
-        if done:
-          obs = evalenv.reset()
+if __name__ == "__main__":
+    train_ttris()

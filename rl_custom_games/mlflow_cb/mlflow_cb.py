@@ -11,14 +11,14 @@ class MFLow(BaseCallback):
         self,
         log_path:str = "logs",
         freq:int = 10,
-        name_prefix: str = "rl_model",
+        experiment_name: str = "rl_model",
         save_replay_buffer: bool = False,
         save_vecnormalize: bool = False,
         verbose: int = 0,
     ):
         super().__init__(verbose)
         self.freq = freq
-        self.name_prefix = name_prefix
+        self.name_prefix = experiment_name
         self.save_replay_buffer = save_replay_buffer
         self.save_vecnormalize = save_vecnormalize
 
@@ -33,13 +33,13 @@ class MFLow(BaseCallback):
         import mlflow
         exp = mlflow.get_experiment_by_name(self.name_prefix)
         if exp is None:
-
             mlflow.create_experiment(self.name_prefix)
-        self.current_run = mlflow.start_run()
+        exp = mlflow.get_experiment_by_name(self.name_prefix)
+        self.current_run = mlflow.start_run(experiment_id=exp.experiment_id)
 
-        self.model
-        self.training_env
-        self.logger
+        # self.model
+        # self.training_env
+        # self.logger
 
     def _on_step(self) -> bool:
         if self.n_calls % self.freq == 0:

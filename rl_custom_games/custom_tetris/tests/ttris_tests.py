@@ -1,9 +1,14 @@
+import logging
 import time
 import unittest
 
+import gym
 import numpy as np
+from gym.utils.env_checker import check_env
+from stable_baselines3.common.env_util import make_vec_env
+from stable_baselines3.common.vec_env import SubprocVecEnv, DummyVecEnv
 
-from ..custom_tetris.custom_tetris import rotate_brick, set_at, set_at_dry
+from ..custom_tetris.custom_tetris import rotate_brick, set_at, set_at_dry, VecTetris
 
 
 class Test_rotation(unittest.TestCase):
@@ -22,23 +27,40 @@ class Test_set_at(unittest.TestCase):
 
         a = np.array([[1, 1, 0],
                   [0, 1, 1]])
-        np.zeros(shape=(10,10))
 
-        buff = np.zeros(shape=(10, 10))
         buffclone = np.zeros(shape=(10, 10))
-        res = []
-        for i in range(10000):
+        set_at(buffclone,(3,3),a)
+        set_at_dry(buffclone, (3, 3), a)
 
-            strt = time.time()
+class Test_set_at(unittest.TestCase):
+    def test_check_env(self):
 
-            buffclone = buff.copy()
-            set_at(buffclone,(3,3),a)
-            end = time.time()
-            res.append(end-strt)
+        from ..custom_tetris.custom_tetris import CustomTetris
 
+        env = CustomTetris()
+        check_env(env, warn=True, skip_render_check=False)
 
-        print(sum(res))
+    def test_vec_venv(self):
+        from ..custom_tetris.custom_tetris import CustomTetris
+        #env = make_vec_env(CustomTetris, n_envs=8)
+        env = SubprocVecEnv([CustomTetris]*4)
+        env.reset()
 
+        env.step([0]*4)
+        env.step([3] * 4)
+    def test_custom_vec(self):
+
+        from ..custom_tetris.custom_tetris import CustomTetris
+        count = 8
+
+        env = VecTetris([CustomTetris]*count)
+        env.reset()
+        env.render()
+
+        env.step( [0] *count)
+        env.render()
+        env.step( [3] * count)
+        env.render()
 
 
 if __name__ == '__main__':

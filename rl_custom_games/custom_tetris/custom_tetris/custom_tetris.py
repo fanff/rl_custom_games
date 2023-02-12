@@ -7,7 +7,9 @@ import itertools
 
 import numpy as np
 from gym import Env
+from gym.envs.registration import EnvSpec
 from gym.vector.utils import spaces
+from stable_baselines3.common.vec_env import DummyVecEnv
 
 BRICKS = [
     np.array([[1, 1],
@@ -106,7 +108,7 @@ class CustomTetris(Env):
     # define render_mode if your environment supports rendering
     render_mode: Optional[str] = None
     reward_range = (-float("inf"), float("inf"))
-    spec: "EnvSpec" = None
+    spec = EnvSpec("FgTetris-v0")
 
     # Set these in ALL subclasses
     action_space = spaces.Discrete(5)
@@ -114,6 +116,13 @@ class CustomTetris(Env):
 
     # Created
     _np_random: Optional[np.random.Generator] = None
+
+    def __init__(self):
+        self.score = 0
+        self.back_board = np.zeros(shape=BOARD_SHAPE, dtype=np.int8)
+        self.brick_location = None
+        self.current_brick = None
+        self.take_brick_on_top()
 
     def fix_on_back_board(self):
         # self.score += 0.01
@@ -127,7 +136,7 @@ class CustomTetris(Env):
     def take_brick_on_top(self):  # take a random brick and add it to the board
 
         self.current_brick = rand_birck()
-        self.brick_location = (3, 0)
+        self.brick_location = (BOARD_SHAPE[0] // 2 - 1, 0)
 
         obs = self.back_board.copy()
         set_result = set_at(obs, self.brick_location, self.current_brick * 2)
@@ -205,11 +214,10 @@ class CustomTetris(Env):
 
         logger.debug("reset!")
         self.score = 0
-        self.board = np.zeros(shape=BOARD_SHAPE, dtype=np.int8)
         self.back_board = np.zeros(shape=BOARD_SHAPE, dtype=np.int8)
         self.take_brick_on_top()
 
-        return self.board.flatten()
+        return self.back_board.flatten()
 
     def render(self, mode="print"):
 
@@ -250,3 +258,9 @@ def find_latest(path="./logs/ttppo/"):
     mdlname = list(sorted(mdlname, key=lambda x: x[0]))
 
     return mdlname[-1][1]
+
+
+class VecTetris(DummyVecEnv):
+    def render(self, mode="print"):
+        for _ in self.envs:
+            _.render(mode)
