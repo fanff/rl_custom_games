@@ -5,19 +5,18 @@ from stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback
 from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.env_util import make_vec_env
 
-from custom_tetris.custom_tetris.custom_tetris import CustomTetris, find_latest
+from custom_tetris.custom_tetris.custom_tetris import CustomTetris
 from mlflow_cb.mlflow_cb import MFLow
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
-
     # env = CustomTetris()
     # check_env(env, warn=True, skip_render_check=False)
     # quit()
 
-    model_idx = "logs/ttppo35"
+    model_idx = "logs/ttppo2"
     env = make_vec_env(CustomTetris, n_envs=8)
     logfreq = 1000
 
@@ -39,10 +38,10 @@ if __name__ == "__main__":
     mlflow_callback = MFLow(freq=logfreq,
                             log_path=f"./{model_idx}/")
 
-    model_toload = find_latest(path=f"{model_idx}/")
-    model = PPO.load(model_toload, env)
+    #model_toload = find_latest(path=f"{model_idx}/")
+    #model = PPO.load(model_toload, env)
     #model.learning_rate=7e-4
-    #model = PPO("MlpPolicy", env, verbose=1,learning_rate=7e-4,)
+    model = PPO("MlpPolicy", env, verbose=1,learning_rate=7e-4,)
     #model = A2C("MlpPolicy", env,
     #            learning_rate=7e-4,
     #            n_steps = 10,

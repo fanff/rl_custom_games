@@ -17,3 +17,5 @@ jobs:
     - name: Build the Docker image
       #run: docker build --rm --tag bl3:$(date +%s) -f docker/Dockerfile .
       run: docker build --rm --tag bl3 -f docker/Dockerfile .
+
+      # run training in with PYTHONPATH=$PWD python custom_tetris/bin/train_ttris.py
