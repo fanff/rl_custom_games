@@ -7,8 +7,9 @@ from rl_custom_games.custom_tetris.custom_tetris.custom_tetris import CustomTetr
 @click.option("--board_height", default=14, type=int,show_default=True)
 @click.option("--board_width", default=7, type=int,show_default=True)
 @click.option("--brick_set", default="traditional", type=str,show_default=True)
-def play_tetris(board_height,board_width,brick_set):
-    evalenv = CustomTetris(board_height,board_width,brick_set)
+@click.option("--max_step", default=200, type=int,show_default=True)
+def play_tetris(board_height,board_width,brick_set,max_step):
+    evalenv = CustomTetris(board_height,board_width,brick_set,max_step=max_step)
 
     evalenv.reset()
     evalenv.render("df")
