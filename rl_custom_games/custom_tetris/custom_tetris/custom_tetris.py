@@ -2,7 +2,7 @@ import os
 from typing import Dict, Any, Optional, Tuple, Union, List, TypeVar
 
 import logging
-
+import random
 import itertools
 
 import numpy as np
@@ -26,15 +26,21 @@ BRICKS = [
               [1, 1, 1]]),
     np.array([[1, 1, 1, 1]])
 ]
+
+BASIC_BRICKS = [
+
+    np.array([[1, 1]]),
+
+    np.array([[1]]),
+]
+
 PRINTMODE = False
-BOARD_SHAPE = (9, 7)
 
 logger = logging.getLogger("ttenv")
 
 
-def rand_birck():
-    import random
-    return random.choice(BRICKS)
+def rand_birck(bset):
+    return random.choice(bset)
 
 
 def rotate_brick(inp):
@@ -112,17 +118,31 @@ class CustomTetris(Env):
 
     # Set these in ALL subclasses
     action_space = spaces.Discrete(5)
-    observation_space = spaces.Box(low=0, high=2, shape=(BOARD_SHAPE[0] * BOARD_SHAPE[1],), dtype=np.int8)
-
+    observation_space = None
     # Created
     _np_random: Optional[np.random.Generator] = None
 
-    def __init__(self):
+    def __init__(self, board_height=14, board_width=7, brick_set="traditional",max_step=100):
         self.score = 0
-        self.back_board = np.zeros(shape=BOARD_SHAPE, dtype=np.int8)
+        if brick_set == "traditional":
+            self.brick_set = BRICKS
+        else:
+            self.brick_set = BASIC_BRICKS
+
+        self.BOARD_SHAPE = (board_height, board_width)
         self.brick_location = None
         self.current_brick = None
+        self.back_board = np.zeros(shape=self.BOARD_SHAPE, dtype=np.int8)
         self.take_brick_on_top()
+
+        self.observation_space = spaces.Box(low=0, high=2,
+                                            shape=(board_height * board_width,),
+                                            dtype=np.int8)
+
+        self.action_space = spaces.Discrete(5)
+
+        self.step_count = 0
+        self.max_step = max_step
 
     def fix_on_back_board(self):
         # self.score += 0.01
@@ -135,8 +155,8 @@ class CustomTetris(Env):
 
     def take_brick_on_top(self):  # take a random brick and add it to the board
 
-        self.current_brick = rand_birck()
-        self.brick_location = (BOARD_SHAPE[0] // 2 - 1, 0)
+        self.current_brick = rand_birck(self.brick_set)
+        self.brick_location = ((self.BOARD_SHAPE[1] // 2) - 1, 0)
 
         obs = self.back_board.copy()
         set_result = set_at(obs, self.brick_location, self.current_brick * 2)
@@ -155,6 +175,11 @@ class CustomTetris(Env):
         return obs.flatten(), score, stop, info
 
     def step(self, action):
+        if self.step_count > self.max_step:
+            r = self.return_formater(self.latest_obs, 0, True, {})
+            return r
+        else:
+            self.step_count += 1
         self.score = 0
 
         if action == 4:  # rotate
@@ -214,7 +239,8 @@ class CustomTetris(Env):
 
         logger.debug("reset!")
         self.score = 0
-        self.back_board = np.zeros(shape=BOARD_SHAPE, dtype=np.int8)
+        self.step_count = 0
+        self.back_board = np.zeros(shape=self.BOARD_SHAPE, dtype=np.int8)
         self.take_brick_on_top()
 
         return self.back_board.flatten()
