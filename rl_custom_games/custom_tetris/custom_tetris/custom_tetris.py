@@ -37,6 +37,21 @@ BASIC_BRICKS = [
     np.array([[1]]),
 ]
 
+BASIC_EXT_BRICKS = [
+
+    np.array([[1, 1]]),
+
+    np.array([[1, 1],
+          [1, 0]]),
+
+    np.array([[1]]),
+]
+
+BRICKS_MAP = {"traditional": BRICKS,
+              "basic": BASIC_BRICKS,
+              "basic_ext": BASIC_EXT_BRICKS}
+
+
 PRINTMODE = False
 
 logger = logging.getLogger("ttenv")
@@ -127,10 +142,8 @@ class CustomTetris(Env):
 
     def __init__(self, board_height=14, board_width=7, brick_set="traditional",max_step=100):
         self.score = 0
-        if brick_set == "traditional":
-            self.brick_set = BRICKS
-        else:
-            self.brick_set = BASIC_BRICKS
+
+        self.brick_set = BRICKS_MAP[brick_set]
 
         self.BOARD_SHAPE = (board_height, board_width)
         self.brick_location = None

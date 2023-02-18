@@ -18,7 +18,7 @@ from rl_custom_games.mlflow_cb.mlflow_cb import MLflowOutputFormat, log_schedule
 
 
 @click.command()
-@click.option("--n_envs", default=1, type=int, show_default=True)
+@click.option("--n_envs", default=32, type=int, show_default=True)
 @click.option("--experiment_name", default="default")
 @click.option("--parallel_env", default=False, type=bool)
 @click.option("--logfreq", default=1000, type=int)
@@ -69,16 +69,16 @@ def train_ttris(n_envs, experiment_name, parallel_env, logfreq, from_scratch, to
 
             eval_callback = EvalCallback(evalenv, best_model_save_path=save_path,
                                          n_eval_episodes=20,
-                                         log_path=save_path, eval_freq=10000,
+                                         log_path=save_path, eval_freq=100,
                                          deterministic=True, render=False
                                          )
 
-            checkpoint_callback = CheckpointCallback(
-                save_freq=10_000,
-                save_path=save_path,
-                save_replay_buffer=True,
-                save_vecnormalize=True,
-            )
+            # checkpoint_callback = CheckpointCallback(
+            #     save_freq=10_000,
+            #     save_path=save_path,
+            #     save_replay_buffer=True,
+            #     save_vecnormalize=True,
+            # )
 
             if not from_scratch:
                 model_toload = find_latest(path=save_path)
