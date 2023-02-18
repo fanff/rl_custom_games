@@ -1,11 +1,14 @@
 import os
+import time
 from typing import Dict, Any, Optional, Tuple, Union, List, TypeVar
+from PIL import Image
 
 import logging
 import random
 import itertools
 
 import numpy as np
+from PIL.Image import Resampling
 from gym import Env
 from gym.envs.registration import EnvSpec
 from gym.vector.utils import spaces
@@ -24,7 +27,7 @@ BRICKS = [
               [1, 1, 1]]),
     np.array([[0, 0, 1],
               [1, 1, 1]]),
-    np.array([[1, 1, 1, 1]])
+    np.array([[1], [1], [1], [1]])
 ]
 
 BASIC_BRICKS = [
@@ -135,9 +138,9 @@ class CustomTetris(Env):
         self.back_board = np.zeros(shape=self.BOARD_SHAPE, dtype=np.int8)
         self.take_brick_on_top()
 
-        self.observation_space = spaces.Box(low=0, high=2,
-                                            shape=(board_height * board_width,),
-                                            dtype=np.int8)
+        self.observation_space = spaces.Box(low=0, high=255,
+                                            shape=(128,64,1),
+                                            dtype=np.uint8)
 
         self.action_space = spaces.Discrete(5)
 
@@ -171,8 +174,7 @@ class CustomTetris(Env):
             debug_render(self.latest_obs)
             return self.latest_obs, -1, True, {}
 
-    def return_formater(self, obs, score, stop, info):
-        return obs.flatten(), score, stop, info
+
 
     def step(self, action):
         if self.step_count > self.max_step:
@@ -241,9 +243,16 @@ class CustomTetris(Env):
         self.score = 0
         self.step_count = 0
         self.back_board = np.zeros(shape=self.BOARD_SHAPE, dtype=np.int8)
-        self.take_brick_on_top()
 
-        return self.back_board.flatten()
+        return self.return_formater(*self.take_brick_on_top())[0]
+    def return_formater(self, observation, score, stop, info):
+        obs = Image.fromarray((observation*127).astype(np.uint8),"L")
+        obs = obs.resize((64, 128), resample=Resampling.NEAREST, box=None, reducing_gap=None)
+
+        #obs.save(f"{time.time()}.png")
+
+        obs = np.uint8(obs)
+        return (np.expand_dims(obs,2), score, stop, info)
 
     def render(self, mode="print"):
 
@@ -290,3 +299,5 @@ class VecTetris(DummyVecEnv):
     def render(self, mode="print"):
         for _ in self.envs:
             _.render(mode)
+
+

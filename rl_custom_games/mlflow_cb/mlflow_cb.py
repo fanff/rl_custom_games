@@ -4,23 +4,20 @@ import time
 import mlflow
 import numpy as np
 from stable_baselines3.common.callbacks import BaseCallback
-from stable_baselines3.common.logger import Logger
+from stable_baselines3.common.logger import Logger, KVWriter
+
 class MFLow(BaseCallback):
 
     def __init__(
         self,
         log_path:str = "logs",
-        freq:int = 10,
         experiment_name: str = "rl_model",
-        save_replay_buffer: bool = False,
-        save_vecnormalize: bool = False,
         verbose: int = 0,
     ):
         super().__init__(verbose)
-        self.freq = freq
+        self.parent = None
         self.name_prefix = experiment_name
-        self.save_replay_buffer = save_replay_buffer
-        self.save_vecnormalize = save_vecnormalize
+
 
         if log_path is not None:
             log_path = os.path.join(log_path, "evaluations")
@@ -32,63 +29,86 @@ class MFLow(BaseCallback):
         self.seen = []
 
     def _init_callback(self) -> None:
-        # Create folder if needed
-        import mlflow
-        exp = mlflow.get_experiment_by_name(self.name_prefix)
-        if exp is None:
-            mlflow.create_experiment(self.name_prefix)
-        exp = mlflow.get_experiment_by_name(self.name_prefix)
-        self.current_run = mlflow.start_run(experiment_id=exp.experiment_id)
+        pass
 
 
     def _on_step(self) -> bool:
-        #if len(self.logger.name_to_value) > 0 :
-        #    print("l")
-        if "train/n_updates" in self.logger.name_to_value:
-            nup = self.logger.name_to_value["train/n_updates"]
-            if nup not in self.seen:
-
-                npzfile = np.load(self.log_path + ".npz")
-                avg_score = np.mean(npzfile.get("results")[-1])
-                avg_length = np.mean(npzfile.get("ep_lengths")[-1])
-                mlflow.log_metric("avg_score", avg_score, step=self.num_timesteps)
-                mlflow.log_metric("avg_length", avg_length, step=self.num_timesteps)
-
-
-                for k,v in self.logger.name_to_value.items():
-                    mlflow.log_metric(k, v, step=self.num_timesteps)
-
-                self.seen.append(nup)
-
-        if "eval/mean_ep_length" in self.logger.name_to_value:
-            for k, v in self.logger.name_to_value.items():
-                mlflow.log_metric(k, v, step=self.num_timesteps)
-        if "eval/mean_reward" in self.logger.name_to_value:
-            for k, v in self.logger.name_to_value.items():
-                mlflow.log_metric(k, v, step=self.num_timesteps)
 
 
         return True
 
     def _on_training_start(self) -> None:
-        self.time_start_trainig = time.time()
+        pass
     def _on_training_end(self) -> None:
         mlflow.log_metric("training_dur", time.time() - self.time_start_trainig, step=self.num_timesteps)
     def _on_rollout_start(self):
         self.time_start_rollout = time.time()
     def _on_rollout_end(self) -> None:
         mlflow.log_metric("roll_out_dur", time.time()-self.time_start_rollout, step=self.num_timesteps)
-        mlflow.log_metric("learning_rate", self.model.learning_rate, step=self.num_timesteps)
-
-        #
-        #
 
 
-        for k,v in self.logger.name_to_count.items():
-            mlflow.log_metric(k, v, step=self.num_timesteps)
 
-        for k,v in self.logger.name_to_value.items():
-            mlflow.log_metric(k, v, step=self.num_timesteps)
+class MLflowOutputFormat(KVWriter):
+    """
+    Dumps key/value pairs into MLflow's numeric format.
+    """
 
-        if self.n_calls % self.freq == 0:
-            mlflow.log_metric("learning_rate", self.model.learning_rate, step=self.num_timesteps)
+    def write(
+            self,
+            key_values,
+            key_excluded,
+            step=0,
+    ) -> None:
+
+        for (key, value), (_, excluded) in zip(
+                sorted(key_values.items()), sorted(key_excluded.items())
+        ):
+
+            if excluded is not None and "mlflow" in excluded:
+                continue
+
+            if isinstance(value, np.ScalarType):
+                if not isinstance(value, str):
+                    mlflow.log_metric(key, value, step)
+
+
+def linear_schedule(initial_value: float):
+    """
+    Linear learning rate schedule.
+
+    :param initial_value: Initial learning rate.
+    :return: schedule that computes
+      current learning rate depending on remaining progress
+    """
+
+    def func(progress_remaining: float) -> float:
+        """
+        Progress will decrease from 1 (beginning) to 0.
+
+        :param progress_remaining:
+        :return: current learning rate
+        """
+        return progress_remaining * initial_value
+
+    return func
+
+
+def log_schedule(initial_value: float):
+    """
+    Linear learning rate schedule.
+
+    :param initial_value: Initial learning rate.
+    :return: schedule that computes
+      current learning rate depending on remaining progress
+    """
+
+    def func(progress_remaining: float) -> float:
+        """
+        Progress will decrease from 1 (beginning) to 0.
+
+        :param progress_remaining:
+        :return: current learning rate
+        """
+        return initial_value * (2 ** progress_remaining)
+
+    return func
