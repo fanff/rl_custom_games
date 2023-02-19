@@ -42,15 +42,28 @@ BASIC_EXT_BRICKS = [
     np.array([[1, 1]]),
 
     np.array([[1, 1],
-          [1, 0]]),
+              [1, 0]]),
+
+    np.array([[1]]),
+]
+
+BASIC_EXT_BRICKS2 = [
+
+    np.array([[1, 1]]),
+
+    np.array([[1, 1],
+              [1, 0]]),
+    np.array([[0, 1],
+              [1, 0]]),
 
     np.array([[1]]),
 ]
 
 BRICKS_MAP = {"traditional": BRICKS,
               "basic": BASIC_BRICKS,
-              "basic_ext": BASIC_EXT_BRICKS}
-
+              "basic_ext": BASIC_EXT_BRICKS,
+              "basic_ext2": BASIC_EXT_BRICKS2,
+              }
 
 PRINTMODE = False
 
@@ -140,7 +153,7 @@ class CustomTetris(Env):
     # Created
     _np_random: Optional[np.random.Generator] = None
 
-    def __init__(self, board_height=14, board_width=7, brick_set="traditional",max_step=100):
+    def __init__(self, board_height=14, board_width=7, brick_set="traditional", max_step=100):
         self.score = 0
 
         self.brick_set = BRICKS_MAP[brick_set]
@@ -151,8 +164,10 @@ class CustomTetris(Env):
         self.back_board = np.zeros(shape=self.BOARD_SHAPE, dtype=np.int8)
         self.take_brick_on_top()
 
+        self.output_height = board_height
+        self.output_width = board_width
         self.observation_space = spaces.Box(low=0, high=255,
-                                            shape=(128,64,1),
+                                            shape=(self.output_height, self.output_width, 1),
                                             dtype=np.uint8)
 
         self.action_space = spaces.Discrete(5)
@@ -186,8 +201,6 @@ class CustomTetris(Env):
             self.latest_obs = obs
             debug_render(self.latest_obs)
             return self.latest_obs, -1, True, {}
-
-
 
     def step(self, action):
         if self.step_count > self.max_step:
@@ -258,14 +271,16 @@ class CustomTetris(Env):
         self.back_board = np.zeros(shape=self.BOARD_SHAPE, dtype=np.int8)
 
         return self.return_formater(*self.take_brick_on_top())[0]
+
     def return_formater(self, observation, score, stop, info):
-        obs = Image.fromarray((observation*127).astype(np.uint8),"L")
-        obs = obs.resize((64, 128), resample=Resampling.NEAREST, box=None, reducing_gap=None)
 
-        #obs.save(f"{time.time()}.png")
+        # return observation.flatten(),score, stop, info
+        obs = Image.fromarray((observation * 127).astype(np.uint8), "L")
 
+        obs = obs.resize((self.output_width, self.output_height), resample=Resampling.NEAREST, box=None, reducing_gap=None)
+        # obs.save(f"{time.time()}.png")
         obs = np.uint8(obs)
-        return (np.expand_dims(obs,2), score, stop, info)
+        return (np.expand_dims(obs, 2), score, stop, info)
 
     def render(self, mode="print"):
 
@@ -312,5 +327,3 @@ class VecTetris(DummyVecEnv):
     def render(self, mode="print"):
         for _ in self.envs:
             _.render(mode)
-
-
