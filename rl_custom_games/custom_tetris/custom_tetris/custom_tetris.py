@@ -70,8 +70,8 @@ PRINTMODE = False
 logger = logging.getLogger("ttenv")
 
 
-def rand_birck(bset):
-    return random.choice(bset)
+def rand_birck(randgen,bset):
+    return randgen.choice(bset)
 
 
 def rotate_brick(inp):
@@ -151,10 +151,15 @@ class CustomTetris(Env):
     action_space = spaces.Discrete(5)
     observation_space = None
     # Created
-    _np_random: Optional[np.random.Generator] = None
+    # _np_random: Optional[np.random.Generator] = None
 
-    def __init__(self, board_height=14, board_width=7, brick_set="traditional", max_step=100):
+    def __init__(self, board_height=14, board_width=7, brick_set="traditional", max_step=100, seed=None):
         self.score = 0
+        if seed is None:
+            self.seed = random.randint(0,9999999)
+        else:
+            self.seed = seed
+        self.rand_generator = random.Random(self.seed)
 
         self.brick_set = BRICKS_MAP[brick_set]
 
@@ -175,6 +180,8 @@ class CustomTetris(Env):
         self.step_count = 0
         self.max_step = max_step
 
+
+
     def fix_on_back_board(self):
         # self.score += 0.01
         obs = self.back_board.copy()
@@ -186,7 +193,7 @@ class CustomTetris(Env):
 
     def take_brick_on_top(self):  # take a random brick and add it to the board
 
-        self.current_brick = rand_birck(self.brick_set)
+        self.current_brick = rand_birck(self.rand_generator,self.brick_set)
         self.brick_location = ((self.BOARD_SHAPE[1] // 2) - 1, 0)
 
         obs = self.back_board.copy()

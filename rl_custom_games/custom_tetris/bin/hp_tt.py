@@ -38,16 +38,16 @@ def train_ttris(from_scratch, brick_set,
 
     def objective(trial: Trial):
         rand = trial.suggest_categorical("rand", [42,314])
-        n_envs = trial.suggest_categorical("n_envs", [8,16])
+        n_envs = trial.suggest_categorical("n_envs", [8])
         # Categorical parameter
         learning_rate =trial.suggest_categorical("learning_rate", [0.001]) # 0.001  # trial.suggest_float("learning_rate", 0.0001, 0.001)
 
         batch_size = trial.suggest_categorical("batch_size", [32])
-        n_steps: int = trial.suggest_categorical("n_steps", [4096,2048])
-        n_epochs = trial.suggest_categorical("n_epochs", [4,8,12])
-        clip_range = trial.suggest_categorical("clip_range", [ 0.3, 0.5,0.7])
-        vf_net_size = trial.suggest_categorical("vf_net_size", [ [96],[72],[64],[16,16],[32,32]  ])
-        pi_net_size = trial.suggest_categorical("pi_net_size", [ [96],[72],[64],[16,16],[32,32]  ])
+        n_steps: int = trial.suggest_categorical("n_steps", [2048])
+        n_epochs = trial.suggest_categorical("n_epochs", [4,8])
+        clip_range = trial.suggest_categorical("clip_range", [ 0.1, 0.3,0.5])
+        vf_net_size = trial.suggest_categorical("vf_net_size", [ [96],[72],[64,64],[32,32]  ])
+        pi_net_size = trial.suggest_categorical("pi_net_size", [ [96],[72],[64,64],[32,32]  ])
 
         gamma = trial.suggest_categorical("gamma", [ 0.9, 0.95,0.99,0.999])
         total_timestep = trial.suggest_categorical("total_timestep", [3_000_000])
@@ -55,7 +55,7 @@ def train_ttris(from_scratch, brick_set,
         #
         mlflow_client = mlflow.MlflowClient()
 
-        with ActiveRun(mlflow_client.create_run("4")) as active_run:
+        with ActiveRun(mlflow_client.create_run("5")) as active_run:
             run_id = active_run.info.run_id
 
             def log_param(k,v):
@@ -97,9 +97,8 @@ def train_ttris(from_scratch, brick_set,
 
             env = VecTetris([lambda: CustomTetris(board_height, board_width, brick_set, max_step)] * n_envs)
 
-            evalenv = VecTransposeImage(VecMonitor(
-                VecTetris([lambda: CustomTetris(board_height, board_width, brick_set, max_step)] * n_envs)
-            ))
+            listof_tetrisbuilder = [lambda: CustomTetris(board_height, board_width, brick_set, max_step,seed=_) for _ in range(n_envs)]
+            evalenv = VecTransposeImage(VecMonitor(VecTetris(listof_tetrisbuilder)))
 
             class artifact_save(BaseCallback):
                 def _on_step(self):
@@ -140,7 +139,7 @@ def train_ttris(from_scratch, brick_set,
                 policy_kwargs["optimizer_kwargs"] = dict(alpha=0.99, eps=1e-5, weight_decay=0)
 
 
-                model = PPO(ppo.MlpPolicy, env, device="cpu",
+                model = PPO(ppo.MlpPolicy, env, device="cuda",
                            verbose=0,
                            learning_rate=pow_schedule(learning_rate,
                                                         learning_rate/10,
