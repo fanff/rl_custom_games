@@ -71,5 +71,5 @@ class MLflowOutputFormat(KVWriter):
 
             if isinstance(value, np.ScalarType):
                 if not isinstance(value, str):
-                    self.client.log_metric(self.run_id,key, value, step)
+                    self.client.log_metric(self.run_id,key, value, step=step)
 

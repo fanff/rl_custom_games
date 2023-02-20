@@ -53,7 +53,7 @@ def train_ttris(from_scratch, brick_set,
         total_timestep = trial.suggest_categorical("total_timestep", [30_000_000])
 
         #
-        mlflow_client = mlflow.MlflowClient()
+        mlflow_client = mlflow.MlflowClient().log_metric()
 
         with ActiveRun(mlflow_client.create_run("5")) as active_run:
             run_id = active_run.info.run_id
