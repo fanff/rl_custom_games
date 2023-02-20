@@ -45,7 +45,7 @@ def train_ttris(from_scratch, brick_set,
         batch_size = trial.suggest_categorical("batch_size", [32])
         n_steps: int = trial.suggest_categorical("n_steps", [2048])
         n_epochs = trial.suggest_categorical("n_epochs", [4,8])
-        clip_range = trial.suggest_categorical("clip_range", [ 0.1, 0.3,0.5])
+        clip_range = trial.suggest_categorical("clip_range", [ 0.1, 0.3])
         vf_net_size = trial.suggest_categorical("vf_net_size", [ [96],[72],[64,64],[32,32]  ])
         pi_net_size = trial.suggest_categorical("pi_net_size", [ [96],[72],[64,64],[32,32]  ])
 
