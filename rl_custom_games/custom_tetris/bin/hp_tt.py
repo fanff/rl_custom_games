@@ -26,7 +26,7 @@ import torch as th
 @click.option("--board_height", default=8, type=int, show_default=True)
 @click.option("--board_width", default=4, type=int, show_default=True)
 @click.option("--brick_set", default="basic_ext2", type=str, show_default=True)
-@click.option("--max_step", default=30, type=int, show_default=True)
+@click.option("--max_step", default=5000, type=int, show_default=True)
 def train_ttris(from_scratch, brick_set,
                 board_height,
                 board_width,
@@ -50,7 +50,7 @@ def train_ttris(from_scratch, brick_set,
         pi_net_size = trial.suggest_categorical("pi_net_size", [ [96],[72],[64,64],[32,32]  ])
 
         gamma = trial.suggest_categorical("gamma", [ 0.9, 0.95,0.99,0.999])
-        total_timestep = trial.suggest_categorical("total_timestep", [3_000_000])
+        total_timestep = trial.suggest_categorical("total_timestep", [30_000_000])
 
         #
         mlflow_client = mlflow.MlflowClient()
