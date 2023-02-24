@@ -96,12 +96,13 @@ class CustomCNN(BaseFeaturesExtractor):
         # print(observation_space.shape)
         self.cnn = nn.Sequential(
             nn.ConstantPad2d((1, 1, 0, 0), 1.0),
-            nn.Conv2d(n_input_channels, convo_in_1, kernel_size=(4, 4), stride=(1, 1), padding=0),
+            nn.Conv2d(n_input_channels, convo_in_1, kernel_size=(4, 4), stride=2, padding=0),
             nn.ReLU(),
             nn.Conv2d(convo_in_1, convo_in_2, kernel_size=3, stride=1, padding=0),
             nn.ReLU(),
             nn.Flatten(),
         )
+
 
         # Compute shape by doing one forward pass
         with th.no_grad():
