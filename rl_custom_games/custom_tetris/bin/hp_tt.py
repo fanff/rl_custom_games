@@ -57,12 +57,12 @@ class CustomNetwork(nn.Module):
         # Policy network
         self.policy_net = nn.Sequential(
             nn.Linear(features_dim, last_layer_dim_pi), nn.ReLU(),
-            nn.Linear(features_dim, last_layer_dim_pi), nn.ReLU()
+            nn.Linear(last_layer_dim_pi, last_layer_dim_pi), nn.ReLU()
         )
         # Value network
         self.value_net = nn.Sequential(
             nn.Linear(features_dim, last_layer_dim_vf), nn.ReLU(),
-            nn.Linear(features_dim, last_layer_dim_vf), nn.ReLU()
+            nn.Linear(last_layer_dim_vf, last_layer_dim_vf), nn.ReLU()
         )
 
     def forward(self, features: th.Tensor) -> Tuple[th.Tensor, th.Tensor]:
@@ -152,7 +152,7 @@ class CustomActorCriticPolicy(ActorCriticPolicy):
 @click.option("--board_width", default=5, type=int, show_default=True)
 @click.option("--brick_set", default="basic_ext2", type=str, show_default=True)
 @click.option("--max_step", default=2000, type=int, show_default=True)
-@click.option("--device", default="cuda", type=int, show_default=True)
+@click.option("--device", default="cuda", type=str, show_default=True)
 def train_ttris(from_scratch, brick_set,
                 board_height,
                 board_width,
