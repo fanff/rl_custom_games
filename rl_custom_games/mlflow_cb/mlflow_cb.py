@@ -3,6 +3,7 @@ import time
 
 import mlflow
 import numpy as np
+from mlflow.entities import Run, RunStatus
 from stable_baselines3.common.callbacks import BaseCallback
 from stable_baselines3.common.logger import KVWriter
 
@@ -47,7 +48,22 @@ class MFLow(BaseCallback):
         mlflow.log_metric("roll_out_dur", time.time()-self.time_start_rollout, step=self.num_timesteps)
 
 
+class ActiveRunWrapper(Run):  # pylint: disable=W0223
+    """Wrapper around :py:class:`mlflow.entities.Run` to enable using Python ``with`` syntax."""
 
+    def __init__(self, run,mlflow_client):
+        Run.__init__(self, run.info, run.data)
+
+        self.mlflow_client = mlflow_client
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        status = RunStatus.FINISHED if exc_type is None else RunStatus.FAILED
+
+        self.mlflow_client.set_terminated(self.info.run_id, RunStatus.to_string(status))
+        return exc_type is None
 class MLflowOutputFormat(KVWriter):
     """
     Dumps key/value pairs into MLflow's numeric format.

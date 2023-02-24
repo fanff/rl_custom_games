@@ -23,7 +23,7 @@ from stable_baselines3 import dqn
 from stable_baselines3 import ppo
 
 from rl_custom_games.custom_tetris.custom_tetris.custom_tetris import CustomTetris, find_latest, VecTetris
-from rl_custom_games.mlflow_cb.mlflow_cb import MLflowOutputFormat
+from rl_custom_games.mlflow_cb.mlflow_cb import MLflowOutputFormat, ActiveRunWrapper
 from rl_custom_games.schedules import linear_schedule, pow_schedule
 import torch as th
 from torch import nn
@@ -94,8 +94,7 @@ class CustomCNN(BaseFeaturesExtractor):
         # print(observation_space.shape)
         self.cnn = nn.Sequential(
             nn.ConstantPad2d((1, 1, 0, 0), 1.0),
-            # more wide than height
-            nn.Conv2d(n_input_channels, convo_in_1, kernel_size=(3, 4), stride=(1, 1), padding=0),
+            nn.Conv2d(n_input_channels, convo_in_1, kernel_size=(4, 4), stride=(1, 1), padding=0),
             nn.ReLU(),
             nn.Conv2d(convo_in_1, convo_in_2, kernel_size=2, stride=1, padding=0),
             nn.ReLU(),
@@ -147,8 +146,8 @@ class CustomActorCriticPolicy(ActorCriticPolicy):
 
 @click.command()
 @click.option("--from_scratch", default=False, type=bool)
-@click.option("--board_height", default=8, type=int, show_default=True)
-@click.option("--board_width", default=4, type=int, show_default=True)
+@click.option("--board_height", default=12, type=int, show_default=True)
+@click.option("--board_width", default=5, type=int, show_default=True)
 @click.option("--brick_set", default="basic_ext2", type=str, show_default=True)
 @click.option("--max_step", default=500, type=int, show_default=True)
 def train_ttris(from_scratch, brick_set,
@@ -185,7 +184,7 @@ def train_ttris(from_scratch, brick_set,
         #
         mlflow_client = mlflow.MlflowClient()
 
-        with ActiveRun(mlflow_client.create_run("199810617923754046")) as active_run:
+        with ActiveRunWrapper(mlflow_client.create_run("668997619673702014"),mlflow_client) as active_run:
             run_id = active_run.info.run_id
 
             def log_param(k, v):
@@ -195,6 +194,7 @@ def train_ttris(from_scratch, brick_set,
             log_param("board_height", board_height)
             log_param("board_width", board_width)
             log_param("max_step", max_step)
+
 
             log_param("n_envs", n_envs)
             log_param("learning_rate", learning_rate)
@@ -297,6 +297,19 @@ def train_ttris(from_scratch, brick_set,
                             policy_kwargs=policy_kwargs,
                             # use_sde=True,
                             )
+
+                mpol = model.policy
+
+                fe_num_params = sum(param.numel() for param in mpol.features_extractor.parameters() if param.requires_grad)
+                mlp_num_params = sum(param.numel() for param in mpol.mlp_extractor.parameters() if param.requires_grad)
+                vn_num_params = sum(param.numel() for param in mpol.value_net.parameters() if param.requires_grad)
+                fn_num_params = sum(param.numel() for param in mpol.action_net.parameters() if param.requires_grad)
+
+                log_param("fe_num_params", fe_num_params)
+                log_param("mlp_num_params", mlp_num_params)
+                log_param("vn_num_params", vn_num_params)
+                log_param("fn_num_params", fn_num_params)
+
                 print(model.policy.features_extractor)
                 print(model.policy.mlp_extractor)
 
@@ -329,6 +342,8 @@ def train_ttris(from_scratch, brick_set,
 
             last_mean_reward = eval_callback.last_mean_reward
             log_param("final_reward", last_mean_reward)
+            #mlflow_client.set_terminated(run_id, 'FINISHED')
+
         del model
         return last_mean_reward
 
