@@ -145,7 +145,7 @@ class CustomActorCriticPolicy(ActorCriticPolicy):
 
 
 @click.command()
-@click.option("--from_scratch", default=False, type=bool)
+@click.option("--from_scratch", default=True, type=bool)
 @click.option("--board_height", default=12, type=int, show_default=True)
 @click.option("--board_width", default=5, type=int, show_default=True)
 @click.option("--brick_set", default="basic_ext2", type=str, show_default=True)
@@ -184,7 +184,7 @@ def train_ttris(from_scratch, brick_set,
         #
         mlflow_client = mlflow.MlflowClient()
 
-        with ActiveRunWrapper(mlflow_client.create_run("668997619673702014"),mlflow_client) as active_run:
+        with ActiveRunWrapper(mlflow_client.create_run("0"),mlflow_client) as active_run:
             run_id = active_run.info.run_id
 
             def log_param(k, v):
@@ -214,7 +214,7 @@ def train_ttris(from_scratch, brick_set,
 
             save_path = active_run.info.artifact_uri.replace("s3://minio/yourfolder/", "mlruns/")
             save_path = save_path.replace("s3://yourbucketname/yourfolder/", "mlruns/")
-            save_path = save_path.replace("file:///", "")
+            save_path = save_path.replace("file://", "")
             save_path = save_path.replace("mlflow-artifacts:", "someruns")
 
             log_param("save_path", save_path)
@@ -263,11 +263,11 @@ def train_ttris(from_scratch, brick_set,
             if not from_scratch:
                 model_toload = find_latest(path=save_path)
                 logger.info("loaded %s", model_toload)
-                model = PPO.load(model_toload, env, device="cuda")
+                model = PPO.load(model_toload, env, device="cuda:1")
             else:
 
                 policy_kwargs = {}
-                # policy_kwargs["net_arch"] = dict(pi=pi_net_size, vf=vf_net_size)
+                # policy_kwargs["net_arch"] = dict(pi=pi_net_size, vf=vf_net_nsize)
                 # policy_kwargs["normalize_images"] = False
                 policy_kwargs = dict(
                     normalize_images=False,
@@ -349,7 +349,7 @@ def train_ttris(from_scratch, brick_set,
 
     study = optuna.create_study(sampler=optuna.samplers.QMCSampler(),  # BruteForceSampler(),
                                 direction=StudyDirection.MAXIMIZE)
-    study.optimize(objective, n_trials=2048, n_jobs=4)
+    study.optimize(objective, n_trials=2048, n_jobs=1)
 
 
 if __name__ == "__main__":
