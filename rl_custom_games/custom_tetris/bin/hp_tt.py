@@ -22,7 +22,6 @@ from stable_baselines3.common.vec_env import SubprocVecEnv, VecTransposeImage, V
 from stable_baselines3 import dqn
 from stable_baselines3 import ppo
 
-
 from rl_custom_games.custom_tetris.custom_tetris.custom_tetris import CustomTetris, find_latest, VecTetris
 from rl_custom_games.mlflow_cb.mlflow_cb import MLflowOutputFormat
 from rl_custom_games.schedules import linear_schedule, pow_schedule
@@ -41,10 +40,10 @@ class CustomNetwork(nn.Module):
     """
 
     def __init__(
-        self,
-        features_dim,
-        last_layer_dim_pi: int = 16,
-        last_layer_dim_vf: int = 16,
+            self,
+            features_dim,
+            last_layer_dim_pi: int = 16,
+            last_layer_dim_vf: int = 16,
     ):
         super().__init__()
 
@@ -63,8 +62,6 @@ class CustomNetwork(nn.Module):
         self.value_net = nn.Sequential(
             nn.Linear(features_dim, last_layer_dim_vf), nn.ReLU()
         )
-
-
 
     def forward(self, features: th.Tensor) -> Tuple[th.Tensor, th.Tensor]:
         """
@@ -94,11 +91,11 @@ class CustomCNN(BaseFeaturesExtractor):
         # We assume CxHxW images (channels first)
         # Re-ordering will be done by pre-preprocessing or wrapper
         n_input_channels = observation_space.shape[0]
-        #print(observation_space.shape)
+        # print(observation_space.shape)
         self.cnn = nn.Sequential(
             nn.ConstantPad2d((1, 1, 0, 0), 1.0),
             # more wide than height
-            nn.Conv2d(n_input_channels, convo_in_1, kernel_size=(2,3), stride=(3,1), padding=0),
+            nn.Conv2d(n_input_channels, convo_in_1, kernel_size=(3, 4), stride=(1, 1), padding=0),
             nn.ReLU(),
             nn.Conv2d(convo_in_1, convo_in_2, kernel_size=2, stride=1, padding=0),
             nn.ReLU(),
@@ -119,14 +116,14 @@ class CustomCNN(BaseFeaturesExtractor):
 
 class CustomActorCriticPolicy(ActorCriticPolicy):
     def __init__(
-        self,
-        observation_space: spaces.Space,
-        action_space: spaces.Space,
-        lr_schedule: Callable[[float], float],
-        last_layer_dim_pi:int,
-        last_layer_dim_vf,
-        *args,
-        **kwargs,
+            self,
+            observation_space: spaces.Space,
+            action_space: spaces.Space,
+            lr_schedule: Callable[[float], float],
+            last_layer_dim_pi: int,
+            last_layer_dim_vf,
+            *args,
+            **kwargs,
     ):
         self.last_layer_dim_pi = last_layer_dim_pi
         self.last_layer_dim_vf = last_layer_dim_vf
@@ -142,12 +139,11 @@ class CustomActorCriticPolicy(ActorCriticPolicy):
         self.ortho_init = False
         self.observation_space = observation_space
 
-
-
     def _build_mlp_extractor(self) -> None:
         self.mlp_extractor = CustomNetwork(self.features_dim,
                                            last_layer_dim_pi=self.last_layer_dim_pi,
                                            last_layer_dim_vf=self.last_layer_dim_vf)
+
 
 @click.command()
 @click.option("--from_scratch", default=False, type=bool)
@@ -165,25 +161,26 @@ def train_ttris(from_scratch, brick_set,
     logger = logging.getLogger("ttrain")
 
     def objective(trial: Trial):
-        rand = trial.suggest_categorical("rand", [42,314])
+        rand = trial.suggest_categorical("rand", [42, 314])
         n_envs = trial.suggest_categorical("n_envs", [8])
         # Categorical parameter
-        learning_rate =trial.suggest_categorical("learning_rate", [0.001,0.0001]) # 0.001  # trial.suggest_float("learning_rate", 0.0001, 0.001)
+        learning_rate = trial.suggest_categorical("learning_rate", [0.001,
+                                                                    0.0001])  # 0.001  # trial.suggest_float("learning_rate", 0.0001, 0.001)
 
         batch_size = trial.suggest_categorical("batch_size", [32])
         n_steps: int = trial.suggest_categorical("n_steps", [512])
         n_epochs = trial.suggest_categorical("n_epochs", [8])
-        clip_range = trial.suggest_categorical("clip_range", [ 0.1,0.2])
+        clip_range = trial.suggest_categorical("clip_range", [0.1, 0.2])
 
-        gamma = trial.suggest_categorical("gamma", [ 0.99])
-        total_timestep = trial.suggest_categorical("total_timestep", [2_000_000,5_000_000,10_000_000])
+        gamma = trial.suggest_categorical("gamma", [0.99])
+        total_timestep = trial.suggest_categorical("total_timestep", [2_000_000, 5_000_000, 10_000_000])
 
-        cnn_feature_size = trial.suggest_categorical("cnn_feature_size", [32,64])
-        vf_net_size = trial.suggest_categorical("vf_net_size", [ 64 ])
-        pi_net_size = trial.suggest_categorical("pi_net_size", [ 64 ])
+        cnn_feature_size = trial.suggest_categorical("cnn_feature_size", [32, 64])
+        vf_net_size = trial.suggest_categorical("vf_net_size", [32, 64])
+        pi_net_size = trial.suggest_categorical("pi_net_size", [32, 64])
 
-        convo_in_1 = trial.suggest_categorical("convo_in_1", [ 16,32,64,128 ])
-        convo_in_2 = trial.suggest_categorical("convo_in_2", [ 16,32,64,128 ])
+        convo_in_1 = trial.suggest_categorical("convo_in_1", [16, 32, 64, 128])
+        convo_in_2 = trial.suggest_categorical("convo_in_2", [16, 32, 64, 128])
 
         #
         mlflow_client = mlflow.MlflowClient()
@@ -191,22 +188,21 @@ def train_ttris(from_scratch, brick_set,
         with ActiveRun(mlflow_client.create_run("199810617923754046")) as active_run:
             run_id = active_run.info.run_id
 
-            def log_param(k,v):
-                mlflow_client.log_param(run_id,k,v)
-
+            def log_param(k, v):
+                mlflow_client.log_param(run_id, k, v)
 
             log_param("brick_set", brick_set)
             log_param("board_height", board_height)
             log_param("board_width", board_width)
             log_param("max_step", max_step)
-            
+
             log_param("n_envs", n_envs)
             log_param("learning_rate", learning_rate)
 
             log_param("batch_size", batch_size)
             log_param("n_steps", n_steps)
             log_param("n_epochs", n_epochs)
-            
+
             log_param("clip_range", clip_range)
 
             log_param("vf_net_size", vf_net_size)
@@ -216,47 +212,45 @@ def train_ttris(from_scratch, brick_set,
             log_param("convo_in_1", convo_in_1)
             log_param("convo_in_2", convo_in_2)
 
-
-
             save_path = active_run.info.artifact_uri.replace("s3://minio/yourfolder/", "mlruns/")
             save_path = save_path.replace("s3://yourbucketname/yourfolder/", "mlruns/")
             save_path = save_path.replace("file:///", "")
             save_path = save_path.replace("mlflow-artifacts:", "someruns")
 
-
             log_param("save_path", save_path)
             log_param("rand", rand)
 
-            os.makedirs(os.path.join(save_path),exist_ok=True)
-            mlflow_output = MLflowOutputFormat(mlflow_client,run_id)
+            os.makedirs(os.path.join(save_path), exist_ok=True)
+            mlflow_output = MLflowOutputFormat(mlflow_client, run_id)
 
             loggers = Logger(
                 folder=save_path,
                 output_formats=[HumanOutputFormat(
-                    os.path.join(save_path,"out.csv")),
+                    os.path.join(save_path, "out.csv")),
                     mlflow_output,
                     TensorBoardOutputFormat(save_path)],
             )
 
             env = VecTetris([lambda: CustomTetris(board_height, board_width, brick_set, max_step)] * n_envs)
 
-            listof_tetrisbuilder = [lambda: CustomTetris(board_height, board_width, brick_set, max_step,seed=_) for _ in range(n_envs)]
+            listof_tetrisbuilder = [lambda: CustomTetris(board_height, board_width, brick_set, max_step, seed=_) for _
+                                    in range(n_envs)]
             evalenv = VecTransposeImage(VecMonitor(VecTetris(listof_tetrisbuilder)))
 
             class artifact_save(BaseCallback):
                 def _on_step(self):
-                    pass#
+                    pass  #
 
-                    #mlflow.(os.path.join(save_path, "best_model.zip"),"best_model__.zip")
+                    # mlflow.(os.path.join(save_path, "best_model.zip"),"best_model__.zip")
 
-
+            es_cb = StopTrainingOnNoModelImprovement(max_no_improvement_evals=30,
+                                                     min_evals=10,
+                                                     verbose=1)
             eval_callback = EvalCallback(evalenv, best_model_save_path=save_path,
                                          n_eval_episodes=20,
-                                         log_path=save_path, eval_freq=8000,
+                                         log_path=save_path, eval_freq=1000,
                                          deterministic=True, render=False,
-                                         callback_after_eval=StopTrainingOnNoModelImprovement(max_no_improvement_evals=15,
-                                                                                               min_evals=10,
-                                                                                               verbose=1)
+                                         callback_after_eval=es_cb
                                          )
 
             # checkpoint_callback = CheckpointCallback(
@@ -272,11 +266,9 @@ def train_ttris(from_scratch, brick_set,
                 model = PPO.load(model_toload, env, device="cuda")
             else:
 
-
-
                 policy_kwargs = {}
-                #policy_kwargs["net_arch"] = dict(pi=pi_net_size, vf=vf_net_size)
-                #policy_kwargs["normalize_images"] = False
+                # policy_kwargs["net_arch"] = dict(pi=pi_net_size, vf=vf_net_size)
+                # policy_kwargs["normalize_images"] = False
                 policy_kwargs = dict(
                     normalize_images=False,
                     features_extractor_class=CustomCNN,
@@ -287,25 +279,24 @@ def train_ttris(from_scratch, brick_set,
                     last_layer_dim_pi=vf_net_size,
                     last_layer_dim_vf=pi_net_size
                 )
-                #policy_kwargs["optimizer_class"] = RMSpropTFLike
-                #policy_kwargs["optimizer_kwargs"] = dict(alpha=0.99, eps=1e-5, weight_decay=0)
-
+                # policy_kwargs["optimizer_class"] = RMSpropTFLike
+                # policy_kwargs["optimizer_kwargs"] = dict(alpha=0.99, eps=1e-5, weight_decay=0)
 
                 model = PPO(CustomActorCriticPolicy, env, device="cpu",
-                           verbose=0,
-                           learning_rate=pow_schedule(learning_rate,
-                                                        learning_rate/100,
-                                                        gamma=2),
-                           ent_coef=0.01,
-                           vf_coef=0.5,
-                           gamma=gamma,
-                           clip_range=clip_range,
-                           batch_size=batch_size,
-                           n_steps=n_steps,
-                           n_epochs=n_epochs,
-                           policy_kwargs=policy_kwargs,
-                            #use_sde=True,
-                           )
+                            verbose=0,
+                            learning_rate=pow_schedule(learning_rate,
+                                                       learning_rate / 100,
+                                                       gamma=2),
+                            ent_coef=0.01,
+                            vf_coef=0.5,
+                            gamma=gamma,
+                            clip_range=clip_range,
+                            batch_size=batch_size,
+                            n_steps=n_steps,
+                            n_epochs=n_epochs,
+                            policy_kwargs=policy_kwargs,
+                            # use_sde=True,
+                            )
                 print(model.policy.features_extractor)
                 print(model.policy.mlp_extractor)
 
@@ -331,19 +322,20 @@ def train_ttris(from_scratch, brick_set,
             log_param("model.policy", model.policy.__class__.__name__)
             log_param("model.policy.normalize_imgs", model.policy.normalize_images)
 
-
             model.learn(log_interval=8,
                         total_timesteps=total_timestep,
                         callback=[eval_callback, ],
                         )
 
             last_mean_reward = eval_callback.last_mean_reward
+            log_param("final_reward", last_mean_reward)
         del model
         return last_mean_reward
 
-    study = optuna.create_study(sampler=optuna.samplers.QMCSampler() , #BruteForceSampler(),
+    study = optuna.create_study(sampler=optuna.samplers.QMCSampler(),  # BruteForceSampler(),
                                 direction=StudyDirection.MAXIMIZE)
-    study.optimize(objective, n_trials=2048,n_jobs=1)
+    study.optimize(objective, n_trials=2048, n_jobs=4)
+
 
 if __name__ == "__main__":
     train_ttris()
