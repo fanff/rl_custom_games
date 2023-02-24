@@ -153,7 +153,7 @@ class CustomTetris(Env):
     # Created
     # _np_random: Optional[np.random.Generator] = None
 
-    def __init__(self, board_height=14, board_width=7, brick_set="traditional", max_step=100, seed=None):
+    def __init__(self, board_height=14, board_width=7, brick_set="traditional", max_step=100, seed=None,format_as_onechannel=True):
         self.score = 0
         if seed is None:
             self.seed = random.randint(0,9999999)
@@ -171,15 +171,17 @@ class CustomTetris(Env):
 
         self.output_height = board_height
         self.output_width = board_width
+
+        self.format_as_onechannel = format_as_onechannel
+        depth = 1 if format_as_onechannel else 3
         self.observation_space = spaces.Box(low=0, high=255,
-                                            shape=(self.output_height, self.output_width, 1),
+                                            shape=(self.output_height, self.output_width, depth),
                                             dtype=np.uint8)
 
         self.action_space = spaces.Discrete(5)
 
         self.step_count = 0
         self.max_step = max_step
-
 
 
     def fix_on_back_board(self):
@@ -281,13 +283,22 @@ class CustomTetris(Env):
 
     def return_formater(self, observation, score, stop, info):
 
-        # return observation.flatten(),score, stop, info
-        obs = Image.fromarray((observation * 127).astype(np.uint8), "L")
+        if self.format_as_onechannel:
+            # return observation.flatten(),score, stop, info
+            obs = Image.fromarray((observation * 127).astype(np.uint8), "L")
 
-        obs = obs.resize((self.output_width, self.output_height), resample=Resampling.NEAREST, box=None, reducing_gap=None)
-        # obs.save(f"{time.time()}.png")
-        obs = np.uint8(obs)
-        return (np.expand_dims(obs, 2), score, stop, info)
+            obs = obs.resize((self.output_width, self.output_height), resample=Resampling.NEAREST, box=None, reducing_gap=None)
+            # obs.save(f"{time.time()}.png")
+            obs = np.uint8(obs)
+
+            return (np.expand_dims(obs, 2), score, stop, info)
+        else:
+
+            obs=observation.astype(np.uint8)
+            n_values = 3
+            buff= np.eye(n_values)[obs]
+            return (buff, score, stop, info)
+
 
     def render(self, mode="print"):
 

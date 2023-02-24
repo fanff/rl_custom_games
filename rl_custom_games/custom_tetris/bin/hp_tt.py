@@ -56,13 +56,17 @@ class CustomNetwork(nn.Module):
 
         # Policy network
         self.policy_net = nn.Sequential(
-            nn.Linear(features_dim, last_layer_dim_pi), nn.ReLU(),
-            nn.Linear(last_layer_dim_pi, last_layer_dim_pi), nn.ReLU()
+            nn.Linear(features_dim, last_layer_dim_pi),
+            nn.ReLU(),
+            nn.Linear(last_layer_dim_pi, last_layer_dim_pi),
+            nn.ReLU()
         )
         # Value network
         self.value_net = nn.Sequential(
-            nn.Linear(features_dim, last_layer_dim_vf), nn.ReLU(),
-            nn.Linear(last_layer_dim_vf, last_layer_dim_vf), nn.ReLU()
+            nn.Linear(features_dim, last_layer_dim_vf),
+            nn.ReLU(),
+            nn.Linear(last_layer_dim_vf, last_layer_dim_vf),
+            nn.ReLU()
         )
 
     def forward(self, features: th.Tensor) -> Tuple[th.Tensor, th.Tensor]:
@@ -96,13 +100,14 @@ class CustomCNN(BaseFeaturesExtractor):
         # print(observation_space.shape)
         self.cnn = nn.Sequential(
             nn.ConstantPad2d((2, 2, 0, 0), 1.0),
-            nn.Conv2d(n_input_channels, convo_in_1, kernel_size=(4, 4), stride=2, padding=0),
+            nn.Conv2d(n_input_channels, convo_in_1//2, kernel_size=(8, 8), stride=4, padding=0),
+            nn.ReLU(),
+            nn.Conv2d(convo_in_1//2, convo_in_1, kernel_size=(4, 4), stride=2, padding=0),
             nn.ReLU(),
             nn.Conv2d(convo_in_1, convo_in_2, kernel_size=3, stride=1, padding=0),
             nn.ReLU(),
             nn.Flatten(),
         )
-
 
         # Compute shape by doing one forward pass
         with th.no_grad():
@@ -149,9 +154,9 @@ class CustomActorCriticPolicy(ActorCriticPolicy):
 
 @click.command()
 @click.option("--from_scratch", default=True, type=bool)
-@click.option("--board_height", default=12, type=int, show_default=True)
-@click.option("--board_width", default=5, type=int, show_default=True)
-@click.option("--brick_set", default="basic_ext2", type=str, show_default=True)
+@click.option("--board_height", default=14, type=int, show_default=True)
+@click.option("--board_width", default=6, type=int, show_default=True)
+@click.option("--brick_set", default="traditional", type=str, show_default=True)
 @click.option("--max_step", default=2000, type=int, show_default=True)
 @click.option("--device", default="cuda", type=str, show_default=True)
 def train_ttris(from_scratch, brick_set,
@@ -171,8 +176,8 @@ def train_ttris(from_scratch, brick_set,
         learning_rate = trial.suggest_categorical("learning_rate", [0.001,
                                                                     0.0001])  # 0.001  # trial.suggest_float("learning_rate", 0.0001, 0.001)
 
-        batch_size = trial.suggest_categorical("batch_size", [32,64])
-        n_steps: int = trial.suggest_categorical("n_steps", [512,2048])
+        batch_size = trial.suggest_categorical("batch_size", [32, 64])
+        n_steps: int = trial.suggest_categorical("n_steps", [512, 2048])
         n_epochs = trial.suggest_categorical("n_epochs", [8])
         clip_range = trial.suggest_categorical("clip_range", [0.1, 0.2])
 
@@ -189,7 +194,7 @@ def train_ttris(from_scratch, brick_set,
         #
         mlflow_client = mlflow.MlflowClient()
 
-        with ActiveRunWrapper(mlflow_client.create_run("0"),mlflow_client) as active_run:
+        with ActiveRunWrapper(mlflow_client.create_run("0"), mlflow_client) as active_run:
             run_id = active_run.info.run_id
 
             def log_param(k, v):
@@ -199,7 +204,6 @@ def train_ttris(from_scratch, brick_set,
             log_param("board_height", board_height)
             log_param("board_width", board_width)
             log_param("max_step", max_step)
-
 
             log_param("n_envs", n_envs)
             log_param("learning_rate", learning_rate)
@@ -236,21 +240,19 @@ def train_ttris(from_scratch, brick_set,
                     TensorBoardOutputFormat(save_path)],
             )
 
-            env = VecTetris([lambda: CustomTetris(board_height, board_width, brick_set, max_step)] * n_envs)
+            env = VecTetris([lambda: CustomTetris(board_height, board_width, brick_set,
+                                                  max_step,
+                                                  format_as_onechannel=False)] * n_envs)
 
-            listof_tetrisbuilder = [lambda: CustomTetris(board_height, board_width, brick_set, max_step, seed=_) for _
+            listof_tetrisbuilder = [lambda: CustomTetris(board_height, board_width, brick_set, max_step, seed=_,
+                                                         format_as_onechannel=False) for _
                                     in range(n_envs)]
             evalenv = VecTransposeImage(VecMonitor(VecTetris(listof_tetrisbuilder)))
-
-            class artifact_save(BaseCallback):
-                def _on_step(self):
-                    pass  #
-
-                    # mlflow.(os.path.join(save_path, "best_model.zip"),"best_model__.zip")
 
             es_cb = StopTrainingOnNoModelImprovement(max_no_improvement_evals=50,
                                                      min_evals=10,
                                                      verbose=1)
+
             eval_callback = EvalCallback(evalenv, best_model_save_path=save_path,
                                          n_eval_episodes=20,
                                          log_path=save_path, eval_freq=1000,
@@ -270,7 +272,6 @@ def train_ttris(from_scratch, brick_set,
                 logger.info("loaded %s", model_toload)
                 model = PPO.load(model_toload, env, device="cuda:1")
             else:
-
 
                 # policy_kwargs["net_arch"] = dict(pi=pi_net_size, vf=vf_net_nsize)
                 # policy_kwargs["normalize_images"] = False
@@ -305,7 +306,8 @@ def train_ttris(from_scratch, brick_set,
 
                 mpol = model.policy
 
-                fe_num_params = sum(param.numel() for param in mpol.features_extractor.parameters() if param.requires_grad)
+                fe_num_params = sum(
+                    param.numel() for param in mpol.features_extractor.parameters() if param.requires_grad)
                 mlp_num_params = sum(param.numel() for param in mpol.mlp_extractor.parameters() if param.requires_grad)
                 vn_num_params = sum(param.numel() for param in mpol.value_net.parameters() if param.requires_grad)
                 fn_num_params = sum(param.numel() for param in mpol.action_net.parameters() if param.requires_grad)
@@ -347,7 +349,7 @@ def train_ttris(from_scratch, brick_set,
 
             last_mean_reward = eval_callback.last_mean_reward
             log_param("final_reward", last_mean_reward)
-            #mlflow_client.set_terminated(run_id, 'FINISHED')
+            # mlflow_client.set_terminated(run_id, 'FINISHED')
 
         del model
         return last_mean_reward

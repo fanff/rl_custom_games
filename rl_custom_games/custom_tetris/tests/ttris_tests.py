@@ -62,6 +62,23 @@ class Test_set_at(unittest.TestCase):
         env.step( [3] * count)
         env.render()
 
+    def test_formating(self):
+
+        from ..custom_tetris.custom_tetris import CustomTetris
+        ct = CustomTetris(format_as_onechannel=False)
+
+        a = ct.observation_space.sample()
+
+        formated = ct.return_formater(ct.latest_obs,None,None,None)
+
+
+        print(formated[0].shape)
+
+        ct.reset()
+
+        ct.step(3)
+        ct.step(3)
+        ct.step(3)
 
 if __name__ == '__main__':
     unittest.main()
