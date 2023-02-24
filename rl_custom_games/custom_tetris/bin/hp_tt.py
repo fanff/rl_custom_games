@@ -95,7 +95,7 @@ class CustomCNN(BaseFeaturesExtractor):
         n_input_channels = observation_space.shape[0]
         # print(observation_space.shape)
         self.cnn = nn.Sequential(
-            nn.ConstantPad2d((1, 1, 0, 0), 1.0),
+            nn.ConstantPad2d((2, 2, 0, 0), 1.0),
             nn.Conv2d(n_input_channels, convo_in_1, kernel_size=(4, 4), stride=2, padding=0),
             nn.ReLU(),
             nn.Conv2d(convo_in_1, convo_in_2, kernel_size=3, stride=1, padding=0),
@@ -248,7 +248,7 @@ def train_ttris(from_scratch, brick_set,
 
                     # mlflow.(os.path.join(save_path, "best_model.zip"),"best_model__.zip")
 
-            es_cb = StopTrainingOnNoModelImprovement(max_no_improvement_evals=30,
+            es_cb = StopTrainingOnNoModelImprovement(max_no_improvement_evals=50,
                                                      min_evals=10,
                                                      verbose=1)
             eval_callback = EvalCallback(evalenv, best_model_save_path=save_path,
