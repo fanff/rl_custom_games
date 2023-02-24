@@ -99,10 +99,8 @@ class CustomCNN(BaseFeaturesExtractor):
         n_input_channels = observation_space.shape[0]
         # print(observation_space.shape)
         self.cnn = nn.Sequential(
-            nn.ConstantPad2d((2, 2, 0, 0), 1.0),
-            nn.Conv2d(n_input_channels, convo_in_1//2, kernel_size=(8, 8), stride=4, padding=0),
-            nn.ReLU(),
-            nn.Conv2d(convo_in_1//2, convo_in_1, kernel_size=(4, 4), stride=2, padding=0),
+            nn.ConstantPad2d((3, 3, 0, 0), 1.0),
+            nn.Conv2d(n_input_channels, convo_in_1, kernel_size=(4, 4), stride=2, padding=0),
             nn.ReLU(),
             nn.Conv2d(convo_in_1, convo_in_2, kernel_size=3, stride=1, padding=0),
             nn.ReLU(),
@@ -154,8 +152,8 @@ class CustomActorCriticPolicy(ActorCriticPolicy):
 
 @click.command()
 @click.option("--from_scratch", default=True, type=bool)
-@click.option("--board_height", default=14, type=int, show_default=True)
-@click.option("--board_width", default=6, type=int, show_default=True)
+@click.option("--board_height", default=16, type=int, show_default=True)
+@click.option("--board_width", default=8, type=int, show_default=True)
 @click.option("--brick_set", default="traditional", type=str, show_default=True)
 @click.option("--max_step", default=2000, type=int, show_default=True)
 @click.option("--device", default="cuda", type=str, show_default=True)
