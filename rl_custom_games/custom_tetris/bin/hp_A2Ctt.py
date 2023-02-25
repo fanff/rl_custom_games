@@ -364,7 +364,7 @@ def train_ttris(from_scratch, brick_set,
         return last_mean_reward
 
     study = optuna.create_study(load_if_exists=True,
-                                study_name="tetris_a2c_5",
+                                study_name="tetris_a2c_7",
                                 sampler=optuna.samplers.QMCSampler(),  # BruteForceSampler(),
                                 direction=StudyDirection.MAXIMIZE,
                                 storage=get_optuna_storage())
