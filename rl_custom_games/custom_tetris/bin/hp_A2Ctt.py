@@ -14,6 +14,7 @@ from mlflow import ActiveRun
 from optuna import Trial
 from optuna.study import StudyDirection
 from stable_baselines3 import A2C
+from stable_baselines3.a2c import MlpPolicy
 from stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback, BaseCallback, \
     StopTrainingOnNoModelImprovement
 from stable_baselines3.common.logger import Logger, HumanOutputFormat, TensorBoardOutputFormat
@@ -176,21 +177,24 @@ def train_ttris(from_scratch, brick_set,
     def objective(trial: Trial):
         rand = trial.suggest_categorical("rand", [42, 314])
         format_as_onechannel = trial.suggest_categorical("format_as_onechannel", [True])
-        n_envs = trial.suggest_categorical("n_envs", [8 , 16])
+        n_envs = trial.suggest_categorical("n_envs", [8, 16])
         # Categorical parameter
-        learning_rate = trial.suggest_categorical("learning_rate", [0.1 ])  # 0.001  # trial.suggest_float("learning_rate", 0.0001, 0.001)
+        learning_rate = trial.suggest_categorical("learning_rate",
+                                                  [0.001,
+                                                   0.0001])  # 0.001  # trial.suggest_float("learning_rate", 0.0001, 0.001)
 
-        n_steps= trial.suggest_categorical("n_steps", [5, 8])
+        n_steps = trial.suggest_categorical("n_steps", [5, 8])
 
         gamma = trial.suggest_categorical("gamma", [0.99])
         total_timestep = trial.suggest_categorical("total_timestep", [2_000_000, 5_000_000, 10_000_000])
 
-        cnn_feature_size = trial.suggest_categorical("cnn_feature_size", [128])
-        vf_net_size = trial.suggest_categorical("vf_net_size", [32, 64])
+        shared_layer_size = trial.suggest_categorical("shared_layer_size", [64, 128])
         pi_net_size = trial.suggest_categorical("pi_net_size", [32, 64])
+        vf_net_size = trial.suggest_categorical("vf_net_size", [32, 64])
 
-        convo_in_1 = trial.suggest_categorical("convo_in_1", [64, 128])
-        convo_in_2 = trial.suggest_categorical("convo_in_2", [64])
+        # cnn_feature_size = trial.suggest_categorical("cnn_feature_size", [128])
+        # convo_in_1 = trial.suggest_categorical("convo_in_1", [64, 128])
+        # convo_in_2 = trial.suggest_categorical("convo_in_2", [64])
 
         #
         mlflow_client = mlflow.MlflowClient()
@@ -209,18 +213,20 @@ def train_ttris(from_scratch, brick_set,
             log_param("board_width", board_width)
             log_param("max_step", max_step)
             log_param("format_as_onechannel", format_as_onechannel)
-            log_param("total_timestep",total_timestep)
+            log_param("total_timestep", total_timestep)
             log_param("n_envs", n_envs)
             log_param("learning_rate", learning_rate)
 
             log_param("n_steps", n_steps)
 
+
+            log_param("shared_layer_size", shared_layer_size)
             log_param("vf_net_size", vf_net_size)
             log_param("pi_net_size", pi_net_size)
-            log_param("cnn_feature_size", cnn_feature_size)
             log_param("gamma", gamma)
-            log_param("convo_in_1", convo_in_1)
-            log_param("convo_in_2", convo_in_2)
+            # log_param("cnn_feature_size", cnn_feature_size)
+            # log_param("convo_in_1", convo_in_1)
+            # log_param("convo_in_2", convo_in_2)
 
             save_path = active_run.info.artifact_uri.replace("s3://minio/yourfolder/", "mlruns/")
             save_path = save_path.replace("s3://yourbucketname/yourfolder/", "mlruns/")
@@ -263,20 +269,38 @@ def train_ttris(from_scratch, brick_set,
 
             # policy_kwargs["net_arch"] = dict(pi=pi_net_size, vf=vf_net_nsize)
             # policy_kwargs["normalize_images"] = False
+            # policy_kwargs = dict(
+            #    normalize_images=False,
+            #    features_extractor_class=CustomCNN,
+            #    features_extractor_kwargs=dict(features_dim=cnn_feature_size,
+            #                                   convo_in_1=convo_in_1,
+            #                                   convo_in_2=convo_in_2),
+            #
+            #    last_layer_dim_pi=vf_net_size,
+            #    last_layer_dim_vf=pi_net_size
+            # )
+            activation_fn = nn.Tanh
             policy_kwargs = dict(
                 normalize_images=False,
-                features_extractor_class=CustomCNN,
-                features_extractor_kwargs=dict(features_dim=cnn_feature_size,
-                                               convo_in_1=convo_in_1,
-                                               convo_in_2=convo_in_2),
+                net_arch=dict(pi=[shared_layer_size,
+                                  pi_net_size,
+                                  pi_net_size],
+                              vf=[shared_layer_size,
+                                  vf_net_size,
+                                  vf_net_size]),
+                activation_fn = activation_fn
+                # features_extractor_kwargs=dict(features_dim=cnn_feature_size,
+                #                               convo_in_1=convo_in_1,
+                #                               convo_in_2=convo_in_2),
 
-                last_layer_dim_pi=vf_net_size,
-                last_layer_dim_vf=pi_net_size
+                # last_layer_dim_pi=vf_net_size,
+                # last_layer_dim_vf=pi_net_size
             )
             policy_kwargs["optimizer_class"] = RMSpropTFLike
             policy_kwargs["optimizer_kwargs"] = dict(alpha=0.99, eps=1e-5, weight_decay=0)
 
-            model = A2C(CustomActorCriticPolicy, env, device=device,
+
+            model = A2C(MlpPolicy, env, device=device,
                         verbose=0,
                         learning_rate=pow_schedule(learning_rate,
                                                    learning_rate / 100,
