@@ -193,10 +193,10 @@ class CustomTetris(Env):
         self.back_board, removed = check_rows(self.back_board)
 
 
-        self.score += removed
+        self.score += 1 + (removed)**2
 
-        #white_block_abovex = np.sum(self.back_board, 1)[:-3].sum()
-        #self.score +=  (-  white_block_abovex)/10.0
+        white_block_abovex = np.sum(self.back_board, 1)[:-4].sum()
+        self.score +=  (-  white_block_abovex)/100.0
     def take_brick_on_top(self):  # take a random brick and add it to the board
 
         self.current_brick = rand_birck(self.rand_generator,self.brick_set)

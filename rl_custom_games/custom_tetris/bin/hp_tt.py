@@ -179,6 +179,7 @@ def train_ttris(from_scratch, brick_set,
     
     def objective(trial: Trial):
         rand = trial.suggest_categorical("rand", [42, 314])
+        format_as_onechannel = trial.suggest_categorical("format_as_onechannel", [True])
         n_envs = trial.suggest_categorical("n_envs", [8])
         # Categorical parameter
         learning_rate = trial.suggest_categorical("learning_rate", [0.001,
@@ -214,6 +215,8 @@ def train_ttris(from_scratch, brick_set,
             log_param("board_height", board_height)
             log_param("board_width", board_width)
             log_param("max_step", max_step)
+            log_param("format_as_onechannel", format_as_onechannel)
+
 
             log_param("n_envs", n_envs)
             log_param("learning_rate", learning_rate)
@@ -252,10 +255,10 @@ def train_ttris(from_scratch, brick_set,
 
             env = VecTetris([lambda: CustomTetris(board_height, board_width, brick_set,
                                                   max_step,
-                                                  format_as_onechannel=False)] * n_envs)
+                                                  format_as_onechannel=format_as_onechannel)] * n_envs)
 
             listof_tetrisbuilder = [lambda: CustomTetris(board_height, board_width, brick_set, max_step, seed=_,
-                                                         format_as_onechannel=False) for _
+                                                         format_as_onechannel=format_as_onechannel) for _
                                     in range(n_envs)]
             evalenv = VecTransposeImage(VecMonitor(VecTetris(listof_tetrisbuilder)))
 
@@ -280,7 +283,7 @@ def train_ttris(from_scratch, brick_set,
             if not from_scratch:
                 model_toload = find_latest(path=save_path)
                 logger.info("loaded %s", model_toload)
-                model = PPO.load(model_toload, env, device="cuda:1")
+                model = PPO.load(model_toload, env, device=device)
             else:
 
                 # policy_kwargs["net_arch"] = dict(pi=pi_net_size, vf=vf_net_nsize)
