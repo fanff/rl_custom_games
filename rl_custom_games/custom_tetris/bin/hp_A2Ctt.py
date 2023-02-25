@@ -1,6 +1,5 @@
 import logging
 import os
-import random
 import sys
 from typing import Callable, Tuple
 
@@ -8,7 +7,6 @@ import mlflow
 import numpy as np
 import optuna
 import click
-from dotenv import load_dotenv
 from gym.vector.utils import spaces
 from mlflow import ActiveRun
 from optuna import Trial
@@ -26,7 +24,6 @@ from stable_baselines3 import ppo
 
 from rl_custom_games.custom_tetris.custom_tetris.custom_tetris import CustomTetris, find_latest, VecTetris
 from rl_custom_games.mlflow_cb.mlflow_cb import MLflowOutputFormat, ActiveRunWrapper
-from rl_custom_games.optuna_ext.utils import get_optuna_storage
 from rl_custom_games.schedules import linear_schedule, pow_schedule
 import torch as th
 from torch import nn
@@ -160,20 +157,13 @@ class CustomActorCriticPolicy(ActorCriticPolicy):
 @click.option("--brick_set", default="basic", type=str, show_default=True)
 @click.option("--max_step", default=2000, type=int, show_default=True)
 @click.option("--device", default="cuda", type=str, show_default=True)
-@click.option("--pidx", default=0, type=int, show_default=True)
 def train_ttris(from_scratch, brick_set,
                 board_height,
                 board_width,
                 max_step,
-                device,
-                pidx):
+                device):
     logging.basicConfig(level=logging.INFO)
 
-    if device == "cuda:":
-        totaldevicecount = th.cuda.device_count()
-        cuda_device_select = pidx % totaldevicecount
-        device = f"cuda:{cuda_device_select}"
-        print("getting into device ",device)
     # env = make_vec_env(CustomTetris, n_envs=n_envs)
     logger = logging.getLogger("ttrain")
 
@@ -201,12 +191,10 @@ def train_ttris(from_scratch, brick_set,
 
         #
         mlflow_client = mlflow.MlflowClient()
-        mlflow_experiment_id = os.getenv("MLFLOW_EXPERIMENT_ID","0")
-        with ActiveRunWrapper(mlflow_client.create_run(mlflow_experiment_id), mlflow_client) as active_run:
+
+        with ActiveRunWrapper(mlflow_client.create_run("0"), mlflow_client) as active_run:
             run_id = active_run.info.run_id
 
-            trial.set_user_attr("mlflow_run_id", run_id)
-            trial.set_user_attr("mlflow_run_name", active_run.info.run_name)
             def log_param(k, v):
                 mlflow_client.log_param(run_id, k, v)
 
@@ -295,8 +283,8 @@ def train_ttris(from_scratch, brick_set,
                     last_layer_dim_pi=vf_net_size,
                     last_layer_dim_vf=pi_net_size
                 )
-                policy_kwargs["optimizer_class"] = RMSpropTFLike
-                policy_kwargs["optimizer_kwargs"] = dict(alpha=0.99, eps=1e-5, weight_decay=0)
+                # policy_kwargs["optimizer_class"] = RMSpropTFLike
+                # policy_kwargs["optimizer_kwargs"] = dict(alpha=0.99, eps=1e-5, weight_decay=0)
 
                 model = PPO(CustomActorCriticPolicy, env, device=device,
                             verbose=0,
@@ -364,17 +352,10 @@ def train_ttris(from_scratch, brick_set,
         del model
         return last_mean_reward
 
-    study = optuna.create_study(load_if_exists=True,
-                                study_name="tetris",
-                                sampler=optuna.samplers.QMCSampler(),  # BruteForceSampler(),
-                                direction=StudyDirection.MAXIMIZE,
-                                storage=get_optuna_storage())
-    study.optimize(objective, n_trials=10, n_jobs=1)
+    study = optuna.create_study(sampler=optuna.samplers.QMCSampler(),  # BruteForceSampler(),
+                                direction=StudyDirection.MAXIMIZE)
+    study.optimize(objective, n_trials=2048, n_jobs=1)
 
 
 if __name__ == "__main__":
-    from dotenv import load_dotenv
-
-    load_dotenv()
-
     train_ttris()
