@@ -4,6 +4,7 @@ import random
 import sys
 from typing import Callable, Tuple
 
+import gym
 import mlflow
 import numpy as np
 import optuna
@@ -19,6 +20,7 @@ from stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback,
     StopTrainingOnNoModelImprovement
 from stable_baselines3.common.logger import Logger, HumanOutputFormat, TensorBoardOutputFormat
 from stable_baselines3.common.policies import ActorCriticPolicy
+from stable_baselines3.common.preprocessing import get_flattened_obs_dim
 from stable_baselines3.common.sb2_compat.rmsprop_tf_like import RMSpropTFLike
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 from stable_baselines3.common.vec_env import SubprocVecEnv, VecTransposeImage, VecMonitor
@@ -31,126 +33,22 @@ import torch as th
 from torch import nn
 
 
-class CustomNetwork(nn.Module):
-    """
-    Custom network for policy and value function.
-    It receives as input the features extracted by the features extractor.
-
-    :param feature_dim: dimension of the features extracted with the features_extractor (e.g. features from a CNN)
-    :param last_layer_dim_pi: (int) number of units for the last layer of the policy network
-    :param last_layer_dim_vf: (int) number of units for the last layer of the value network
+class CustomFExtractor(BaseFeaturesExtractor):
     """
 
-    def __init__(
-            self,
-            features_dim,
-            last_layer_dim_pi: int = 16,
-            last_layer_dim_vf: int = 16,
-    ):
-        super().__init__()
+    :param observation_space:
+    """
 
-        # padding  = 1 / 0
+    def __init__(self, observation_space: gym.Space,size=32) -> None:
+        super().__init__(observation_space, get_flattened_obs_dim(observation_space))
 
-        # IMPORTANT:
-        # Save output dimensions, used to create the distributions
-        self.latent_dim_pi = last_layer_dim_pi
-        self.latent_dim_vf = last_layer_dim_vf
-
-        # Policy network
-        self.policy_net = nn.Sequential(
-            nn.Linear(features_dim, last_layer_dim_pi),
-            nn.ReLU(),
-            nn.Linear(last_layer_dim_pi, last_layer_dim_pi),
-            nn.ReLU()
+        self.linear = nn.Sequential(
+                    nn.Flatten(),
+                    nn.Linear(get_flattened_obs_dim(observation_space), size), nn.ReLU(),
         )
-        # Value network
-        self.value_net = nn.Sequential(
-            nn.Linear(features_dim, last_layer_dim_vf),
-            nn.ReLU(),
-            nn.Linear(last_layer_dim_vf, last_layer_dim_vf),
-            nn.ReLU()
-        )
-
-    def forward(self, features: th.Tensor) -> Tuple[th.Tensor, th.Tensor]:
-        """
-        :return: (th.Tensor, th.Tensor) latent_policy, latent_value of the specified network.
-            If all layers are shared, then ``latent_policy == latent_value``
-        """
-        return self.forward_actor(features), self.forward_critic(features)
-
-    def forward_actor(self, features: th.Tensor) -> th.Tensor:
-        return self.policy_net(features)
-
-    def forward_critic(self, features: th.Tensor) -> th.Tensor:
-        return self.value_net(features)
-
-
-class CustomCNN(BaseFeaturesExtractor):
-    """
-    :param observation_space: (gym.Space)
-    :param features_dim: (int) Number of features extracted.
-        This corresponds to the number of unit for the last layer.
-    """
-
-    def __init__(self, observation_space: spaces.Box, features_dim: int = 256,
-                 convo_in_1=64,
-                 convo_in_2=32):
-        super().__init__(observation_space, features_dim)
-        # We assume CxHxW images (channels first)
-        # Re-ordering will be done by pre-preprocessing or wrapper
-        n_input_channels = observation_space.shape[0]
-        # print(observation_space.shape)
-        self.cnn = nn.Sequential(
-            nn.ConstantPad2d((2, 2, 0, 0), 1.0),
-            nn.Conv2d(n_input_channels, convo_in_1, kernel_size=(4, 4), stride=2, padding=0),
-            nn.ReLU(),
-            nn.Conv2d(convo_in_1, convo_in_2, kernel_size=3, stride=1, padding=0),
-            nn.ReLU(),
-            nn.Flatten(),
-        )
-
-        # Compute shape by doing one forward pass
-        with th.no_grad():
-            n_flatten = self.cnn(
-                th.as_tensor(observation_space.sample()[None]).float()
-            ).shape[1]
-
-        self.linear = nn.Sequential(nn.Linear(n_flatten, features_dim), nn.ReLU())
 
     def forward(self, observations: th.Tensor) -> th.Tensor:
-        return self.linear(self.cnn(observations))
-
-
-class CustomActorCriticPolicy(ActorCriticPolicy):
-    def __init__(
-            self,
-            observation_space: spaces.Space,
-            action_space: spaces.Space,
-            lr_schedule: Callable[[float], float],
-            last_layer_dim_pi: int,
-            last_layer_dim_vf,
-            *args,
-            **kwargs,
-    ):
-        self.last_layer_dim_pi = last_layer_dim_pi
-        self.last_layer_dim_vf = last_layer_dim_vf
-        super().__init__(
-            observation_space,
-            action_space,
-            lr_schedule,
-            # Pass remaining arguments to base class
-            *args,
-            **kwargs,
-        )
-        # Disable orthogonal initialization
-        self.ortho_init = False
-        self.observation_space = observation_space
-
-    def _build_mlp_extractor(self) -> None:
-        self.mlp_extractor = CustomNetwork(self.features_dim,
-                                           last_layer_dim_pi=self.last_layer_dim_pi,
-                                           last_layer_dim_vf=self.last_layer_dim_vf)
-
+        return self.linear(observations)
 
 @click.command()
 @click.option("--from_scratch", default=True, type=bool)
@@ -174,31 +72,11 @@ def train_ttris(from_scratch, brick_set,
         device = f"cuda:{cuda_device_select}"
         print("getting into device ", device)
 
+    mlflow_experiment_id = os.getenv("MLFLOW_EXPERIMENT_ID", "0")
     def objective(trial: Trial):
-        rand = trial.suggest_categorical("rand", [42, 314])
-        format_as_onechannel = trial.suggest_categorical("format_as_onechannel", [True])
-        n_envs = trial.suggest_categorical("n_envs", [8, 16])
-        # Categorical parameter
-        learning_rate = trial.suggest_categorical("learning_rate",
-                                                  [0.001,
-                                                   0.0001])  # 0.001  # trial.suggest_float("learning_rate", 0.0001, 0.001)
 
-        n_steps = trial.suggest_categorical("n_steps", [5, 8])
-
-        gamma = trial.suggest_categorical("gamma", [0.99])
-        total_timestep = trial.suggest_categorical("total_timestep", [2_000_000, 5_000_000, 10_000_000])
-
-        shared_layer_size = trial.suggest_categorical("shared_layer_size", [64, 128])
-        pi_net_size = trial.suggest_categorical("pi_net_size", [32, 64])
-        vf_net_size = trial.suggest_categorical("vf_net_size", [32, 64])
-
-        # cnn_feature_size = trial.suggest_categorical("cnn_feature_size", [128])
-        # convo_in_1 = trial.suggest_categorical("convo_in_1", [64, 128])
-        # convo_in_2 = trial.suggest_categorical("convo_in_2", [64])
-
-        #
         mlflow_client = mlflow.MlflowClient()
-        mlflow_experiment_id = os.getenv("MLFLOW_EXPERIMENT_ID", "0")
+
         with ActiveRunWrapper(mlflow_client.create_run(mlflow_experiment_id), mlflow_client) as active_run:
             run_id = active_run.info.run_id
 
@@ -208,25 +86,33 @@ def train_ttris(from_scratch, brick_set,
             def log_param(k, v):
                 mlflow_client.log_param(run_id, k, v)
 
+            def pick_cat(name, opts):
+                v = trial.suggest_categorical(name, opts)
+                log_param(name, v)
+                return v
+
             log_param("brick_set", brick_set)
             log_param("board_height", board_height)
             log_param("board_width", board_width)
             log_param("max_step", max_step)
-            log_param("format_as_onechannel", format_as_onechannel)
-            log_param("total_timestep", total_timestep)
-            log_param("n_envs", n_envs)
-            log_param("learning_rate", learning_rate)
-
-            log_param("n_steps", n_steps)
 
 
-            log_param("shared_layer_size", shared_layer_size)
-            log_param("vf_net_size", vf_net_size)
-            log_param("pi_net_size", pi_net_size)
-            log_param("gamma", gamma)
-            # log_param("cnn_feature_size", cnn_feature_size)
-            # log_param("convo_in_1", convo_in_1)
-            # log_param("convo_in_2", convo_in_2)
+
+            rand = pick_cat("rand", [42, 314])
+            format_as_onechannel = pick_cat("format_as_onechannel", [True])
+            n_envs = pick_cat("n_envs", [8, 16])
+            learning_rate = pick_cat("learning_rate",
+                                                      [0.001,
+                                                       0.0001])  # 0.001  # trial.suggest_float("learning_rate", 0.0001, 0.001)
+
+            n_steps = pick_cat("n_steps", [5, 8])
+
+            gamma = pick_cat("gamma", [0.99])
+            total_timestep = pick_cat("total_timestep", [2_000_000, 5_000_000, 10_000_000])
+
+            shared_layer_size = pick_cat("shared_layer_size", [64, 128])
+            vf_size = pick_cat("vf_size", [32, 64])
+            pi_size = pick_cat("pi_size", [32, 64])
 
             save_path = active_run.info.artifact_uri.replace("s3://minio/yourfolder/", "mlruns/")
             save_path = save_path.replace("s3://yourbucketname/yourfolder/", "mlruns/")
@@ -234,7 +120,6 @@ def train_ttris(from_scratch, brick_set,
             save_path = save_path.replace("mlflow-artifacts:", "someruns")
 
             log_param("save_path", save_path)
-            log_param("rand", rand)
 
             os.makedirs(os.path.join(save_path), exist_ok=True)
             mlflow_output = MLflowOutputFormat(mlflow_client, run_id)
@@ -279,19 +164,14 @@ def train_ttris(from_scratch, brick_set,
             #    last_layer_dim_pi=vf_net_size,
             #    last_layer_dim_vf=pi_net_size
             # )
-            activation_fn = nn.Tanh
+            activation_fn = nn.ReLU
             policy_kwargs = dict(
                 normalize_images=False,
-                net_arch=dict(pi=[shared_layer_size,
-                                  pi_net_size,
-                                  pi_net_size],
-                              vf=[shared_layer_size,
-                                  vf_net_size,
-                                  vf_net_size]),
-                activation_fn = activation_fn
-                # features_extractor_kwargs=dict(features_dim=cnn_feature_size,
-                #                               convo_in_1=convo_in_1,
-                #                               convo_in_2=convo_in_2),
+                net_arch=[shared_layer_size, dict(vf=[vf_size],
+                                                  pi=[pi_size])],
+                activation_fn = activation_fn,
+                #features_extractor_class=CustomFExtractor,
+                #features_extractor_kwargs=dict(size=64),
 
                 # last_layer_dim_pi=vf_net_size,
                 # last_layer_dim_vf=pi_net_size
@@ -364,7 +244,7 @@ def train_ttris(from_scratch, brick_set,
         return last_mean_reward
 
     study = optuna.create_study(load_if_exists=True,
-                                study_name="tetris_a2c_7",
+                                study_name="tetris_a2c_8",
                                 sampler=optuna.samplers.QMCSampler(),  # BruteForceSampler(),
                                 direction=StudyDirection.MAXIMIZE,
                                 storage=get_optuna_storage())
