@@ -154,9 +154,9 @@ class CustomActorCriticPolicy(ActorCriticPolicy):
 @click.command()
 @click.option("--from_scratch", default=True, type=bool)
 @click.option("--board_height", default=10, type=int, show_default=True)
-@click.option("--board_width", default=5, type=int, show_default=True)
-@click.option("--brick_set", default="basic", type=str, show_default=True)
-@click.option("--max_step", default=2000, type=int, show_default=True)
+@click.option("--board_width", default=6, type=int, show_default=True)
+@click.option("--brick_set", default="traditional", type=str, show_default=True)
+@click.option("--max_step", default=50, type=int, show_default=True)
 @click.option("--device", default="cuda", type=str, show_default=True)
 @click.option("--pidx", default=0, type=int, show_default=True)
 def train_ttris(from_scratch, brick_set,
@@ -176,22 +176,21 @@ def train_ttris(from_scratch, brick_set,
     def objective(trial: Trial):
         rand = trial.suggest_categorical("rand", [42, 314])
         format_as_onechannel = trial.suggest_categorical("format_as_onechannel", [True])
-        n_envs = trial.suggest_categorical("n_envs", [8])
+        n_envs = trial.suggest_categorical("n_envs", [8 , 16])
         # Categorical parameter
-        learning_rate = trial.suggest_categorical("learning_rate", [0.001,
-                                                                    0.0001])  # 0.001  # trial.suggest_float("learning_rate", 0.0001, 0.001)
+        learning_rate = trial.suggest_categorical("learning_rate", [0.1 ])  # 0.001  # trial.suggest_float("learning_rate", 0.0001, 0.001)
 
-        n_steps: int = trial.suggest_categorical("n_steps", [5, 8])
+        n_steps= trial.suggest_categorical("n_steps", [5, 8])
 
         gamma = trial.suggest_categorical("gamma", [0.99])
         total_timestep = trial.suggest_categorical("total_timestep", [2_000_000, 5_000_000, 10_000_000])
 
-        cnn_feature_size = trial.suggest_categorical("cnn_feature_size", [32, 64, 128])
+        cnn_feature_size = trial.suggest_categorical("cnn_feature_size", [128])
         vf_net_size = trial.suggest_categorical("vf_net_size", [32, 64])
         pi_net_size = trial.suggest_categorical("pi_net_size", [32, 64])
 
-        convo_in_1 = trial.suggest_categorical("convo_in_1", [64])
-        convo_in_2 = trial.suggest_categorical("convo_in_2", [32])
+        convo_in_1 = trial.suggest_categorical("convo_in_1", [64, 128])
+        convo_in_2 = trial.suggest_categorical("convo_in_2", [64])
 
         #
         mlflow_client = mlflow.MlflowClient()
@@ -210,7 +209,7 @@ def train_ttris(from_scratch, brick_set,
             log_param("board_width", board_width)
             log_param("max_step", max_step)
             log_param("format_as_onechannel", format_as_onechannel)
-
+            log_param("total_timestep",total_timestep)
             log_param("n_envs", n_envs)
             log_param("learning_rate", learning_rate)
 
@@ -341,7 +340,7 @@ def train_ttris(from_scratch, brick_set,
         return last_mean_reward
 
     study = optuna.create_study(load_if_exists=True,
-                                study_name="tetris_a2c_2",
+                                study_name="tetris_a2c_5",
                                 sampler=optuna.samplers.QMCSampler(),  # BruteForceSampler(),
                                 direction=StudyDirection.MAXIMIZE,
                                 storage=get_optuna_storage())
