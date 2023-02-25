@@ -176,7 +176,7 @@ def train_ttris(from_scratch, brick_set,
         print("getting into device ",device)
     # env = make_vec_env(CustomTetris, n_envs=n_envs)
     logger = logging.getLogger("ttrain")
-
+    
     def objective(trial: Trial):
         rand = trial.suggest_categorical("rand", [42, 314])
         n_envs = trial.suggest_categorical("n_envs", [8])
@@ -365,7 +365,7 @@ def train_ttris(from_scratch, brick_set,
         return last_mean_reward
 
     study = optuna.create_study(load_if_exists=True,
-                                study_name="tetris",
+                                study_name="tetris2",
                                 sampler=optuna.samplers.QMCSampler(),  # BruteForceSampler(),
                                 direction=StudyDirection.MAXIMIZE,
                                 storage=get_optuna_storage())

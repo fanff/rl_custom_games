@@ -5,6 +5,7 @@ click
 optuna
 tensorboard
 
+pymysql
 
 python-dotenv
 
