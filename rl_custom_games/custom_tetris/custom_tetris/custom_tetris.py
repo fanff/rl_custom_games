@@ -144,17 +144,14 @@ class CustomTetris(Env):
     metadata: Dict[str, Any] = {"render.modes": ["print"]}
     # define render_mode if your environment supports rendering
     render_mode: Optional[str] = None
-    reward_range = (-float("inf"), float("inf"))
+
     spec = EnvSpec("FgTetris-v0")
 
-    # Set these in ALL subclasses
-    action_space = spaces.Discrete(5)
-    observation_space = None
-    # Created
     # _np_random: Optional[np.random.Generator] = None
 
     def __init__(self, board_height=14, board_width=7, brick_set="traditional", max_step=100, seed=None,format_as_onechannel=True):
         self.score = 0
+        self.reward_range = (-10, max_step)
         if seed is None:
             self.seed = random.randint(0,9999999)
         else:
@@ -351,3 +348,38 @@ class VecTetris(DummyVecEnv):
     def render(self, mode="print"):
         for _ in self.envs:
             _.render(mode)
+
+
+class GroupedActionSpace(CustomTetris):
+
+    def __init__(self,*args,**kwargs):
+        CustomTetris.__init__(self,*args,**kwargs)
+
+
+
+
+        t = [[3],
+             [1, 3],
+             [2, 3]]
+        # 4 rotate
+        # 3 push down
+        self.allcombo = []
+        for r in [[], [4], [4, 4]]:
+            for p in t:
+                self.allcombo.append(r + p)
+
+        self.action_space = spaces.Discrete(len(self.allcombo))
+    def step(self, action):
+
+        suite = self.allcombo[action]
+
+        cum_rew = 0
+        for action_item in suite:
+            obs,rew,finished,info = CustomTetris.step(self,action_item)
+
+            if finished:
+                return obs,cum_rew,finished,info
+            else:
+                cum_rew+=rew
+
+        return obs,cum_rew,finished,info

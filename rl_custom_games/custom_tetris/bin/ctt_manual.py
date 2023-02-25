@@ -1,6 +1,6 @@
 import click
 
-from rl_custom_games.custom_tetris.custom_tetris.custom_tetris import CustomTetris
+from rl_custom_games.custom_tetris.custom_tetris.custom_tetris import CustomTetris, GroupedActionSpace
 
 
 @click.command()
@@ -9,11 +9,12 @@ from rl_custom_games.custom_tetris.custom_tetris.custom_tetris import CustomTetr
 @click.option("--brick_set", default="traditional", type=str,show_default=True)
 @click.option("--max_step", default=2000, type=int,show_default=True)
 def play_tetris(board_height,board_width,brick_set,max_step):
-    evalenv = CustomTetris(board_height,board_width,brick_set,max_step=max_step,seed=4)
+    evalenv = GroupedActionSpace(board_height,board_width,brick_set,max_step=max_step,seed=4)
 
     evalenv.reset()
     evalenv.render("df")
     for i in range(100000):
+        print(evalenv.action_space)
         r = input("action ?")
 
 

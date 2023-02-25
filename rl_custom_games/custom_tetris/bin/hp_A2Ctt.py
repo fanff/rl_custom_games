@@ -25,7 +25,8 @@ from stable_baselines3.common.sb2_compat.rmsprop_tf_like import RMSpropTFLike
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 from stable_baselines3.common.vec_env import SubprocVecEnv, VecTransposeImage, VecMonitor
 
-from rl_custom_games.custom_tetris.custom_tetris.custom_tetris import CustomTetris, find_latest, VecTetris
+from rl_custom_games.custom_tetris.custom_tetris.custom_tetris import CustomTetris, find_latest, VecTetris, \
+    GroupedActionSpace
 from rl_custom_games.mlflow_cb.mlflow_cb import MLflowOutputFormat, ActiveRunWrapper
 from rl_custom_games.optuna_ext.utils import get_optuna_storage
 from rl_custom_games.schedules import linear_schedule, pow_schedule
@@ -52,7 +53,7 @@ class CustomFExtractor(BaseFeaturesExtractor):
 
 @click.command()
 @click.option("--from_scratch", default=True, type=bool)
-@click.option("--board_height", default=10, type=int, show_default=True)
+@click.option("--board_height", default=14, type=int, show_default=True)
 @click.option("--board_width", default=6, type=int, show_default=True)
 @click.option("--brick_set", default="traditional", type=str, show_default=True)
 @click.option("--max_step", default=50, type=int, show_default=True)
@@ -132,11 +133,11 @@ def train_ttris(from_scratch, brick_set,
                     TensorBoardOutputFormat(save_path)],
             )
 
-            env = VecTetris([lambda: CustomTetris(board_height, board_width, brick_set,
+            env = VecTetris([lambda: GroupedActionSpace(board_height, board_width, brick_set,
                                                   max_step,
                                                   format_as_onechannel=format_as_onechannel)] * n_envs)
 
-            listof_tetrisbuilder = [lambda: CustomTetris(board_height, board_width, brick_set, max_step, seed=_,
+            listof_tetrisbuilder = [lambda: GroupedActionSpace(board_height, board_width, brick_set, max_step, seed=_,
                                                          format_as_onechannel=format_as_onechannel) for _
                                     in range(n_envs)]
             evalenv = VecTransposeImage(VecMonitor(VecTetris(listof_tetrisbuilder)))
