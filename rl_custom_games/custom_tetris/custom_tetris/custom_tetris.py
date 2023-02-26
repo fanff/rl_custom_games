@@ -194,7 +194,16 @@ class CustomTetris(Env):
 
         self.score += (removed)**2
 
-        self.score += 0.1
+        white_block_above_4 = np.sum(self.back_board[:-4])
+        self.score -= white_block_above_4 / ((self.output_height-4)*self.output_width)
+
+        count_by_row = np.sum(self.back_board[:- 2], 1)
+        for vidx,v in enumerate(count_by_row):
+            if v>0:
+                break
+
+        pen = (self.output_height - vidx) / self.output_height
+        self.score -= pen*v
 
 
 
@@ -313,10 +322,12 @@ class CustomTetris(Env):
 
 
     def render(self, mode="print"):
-
         lines = debug_print(self.latest_obs)
-        lines[-1] = "score: %.2f" % self.score
-        print("\n".join(lines))
+        lines[-1] = "rew: %.2f" % self.score
+        if mode=="txt":
+            return lines
+        else:
+            print("\n".join(lines))
 
     def close(self):
         """Override close in your subclass to perform any necessary cleanup.
@@ -365,9 +376,9 @@ class GroupedActionSpace(CustomTetris):
         CustomTetris.__init__(self,*args,**kwargs)
 
 
-        lefts= [[1]*_ for _ in range(1,self.output_width//2 + 1)]
+        lefts= [[1]*_ for _ in range(1,self.output_width//2 )]
 
-        rights = [[1]*_ for _ in range(1,self.output_width//2 + 1)]
+        rights = [[2]*_ for _ in range(1,self.output_width//2 )]
 
         t=[[3]]
         for l in lefts:
