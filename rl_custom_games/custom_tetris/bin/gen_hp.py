@@ -10,6 +10,7 @@ from optuna import Trial
 from optuna.study import StudyDirection
 from stable_baselines3.common.logger import Logger, TensorBoardOutputFormat, HumanOutputFormat
 
+from rl_custom_games.custom_tetris.bin.hp_cart_pole import DQN_cart_pole
 from rl_custom_games.custom_tetris.bin.hp_A2C_run import A2C_run
 from rl_custom_games.custom_tetris.bin.hp_dqn_run import DQN_run
 from rl_custom_games.mlflow_cb.mlflow_cb import MLflowOutputFormat, ActiveRunWrapper
@@ -91,6 +92,7 @@ def train_ttris(brick_set,
         return last_mean_reward
 
     run = DQN_run
+    run = DQN_cart_pole
     study = optuna.create_study(load_if_exists=True,
                                 study_name=str(run)+"1",
                                 sampler=optuna.samplers.QMCSampler(),  # BruteForceSampler(),
