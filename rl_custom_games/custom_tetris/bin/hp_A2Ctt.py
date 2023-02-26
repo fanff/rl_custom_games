@@ -53,7 +53,7 @@ class CustomFExtractor(BaseFeaturesExtractor):
 
 @click.command()
 @click.option("--from_scratch", default=True, type=bool)
-@click.option("--board_height", default=14, type=int, show_default=True)
+@click.option("--board_height", default=20, type=int, show_default=True)
 @click.option("--board_width", default=6, type=int, show_default=True)
 @click.option("--brick_set", default="traditional", type=str, show_default=True)
 @click.option("--max_step", default=50, type=int, show_default=True)
@@ -100,10 +100,17 @@ def train_ttris(from_scratch, brick_set,
 
 
             rand = pick_cat("rand", [42, 314])
+
+            use_rmsprop = pick_cat("use_rmsprop", [True, False])
+
+            activation_fct = pick_cat("activation", ["relu", "tanh"])
+            activation_fct_dict = {"tanh":nn.Tanh,"relu":nn.ReLU}
+            activation_fct = activation_fct_dict[activation_fct]
+
             format_as_onechannel = pick_cat("format_as_onechannel", [True])
-            n_envs = pick_cat("n_envs", [8, 16])
+            n_envs = pick_cat("n_envs", [8, 16,24])
             learning_rate = pick_cat("learning_rate",
-                                                      [0.001,
+                                                      [0.0003,
                                                        0.0001])  # 0.001  # trial.suggest_float("learning_rate", 0.0001, 0.001)
 
             n_steps = pick_cat("n_steps", [5, 8])
@@ -112,8 +119,12 @@ def train_ttris(from_scratch, brick_set,
             total_timestep = pick_cat("total_timestep", [2_000_000, 5_000_000, 10_000_000])
 
             shared_layer_size = pick_cat("shared_layer_size", [64, 128])
-            vf_size = pick_cat("vf_size", [32, 64])
-            pi_size = pick_cat("pi_size", [32, 64])
+            vf_size = pick_cat("vf_size", [ "[64]","[64,64]"])
+
+            import json
+            vf_size = json.loads(vf_size)
+            pi_size = pick_cat("pi_size", [ "[64]","[64,64]"])
+            pi_size = json.loads(pi_size)
 
             save_path = active_run.info.artifact_uri.replace("s3://minio/yourfolder/", "mlruns/")
             save_path = save_path.replace("s3://yourbucketname/yourfolder/", "mlruns/")
@@ -142,13 +153,13 @@ def train_ttris(from_scratch, brick_set,
                                     in range(n_envs)]
             evalenv = (VecMonitor(VecTetris(listof_tetrisbuilder)))
 
-            es_cb = StopTrainingOnNoModelImprovement(max_no_improvement_evals=50,
+            es_cb = StopTrainingOnNoModelImprovement(max_no_improvement_evals=150,
                                                      min_evals=10,
                                                      verbose=1)
 
             eval_callback = EvalCallback(evalenv, best_model_save_path=save_path,
-                                         n_eval_episodes=20,
-                                         log_path=save_path, eval_freq=1000,
+                                         n_eval_episodes=40,
+                                         log_path=save_path, eval_freq=300,
                                          deterministic=True, render=False,
                                          callback_after_eval=es_cb
                                          )
@@ -165,21 +176,23 @@ def train_ttris(from_scratch, brick_set,
             #    last_layer_dim_pi=vf_net_size,
             #    last_layer_dim_vf=pi_net_size
             # )
-            activation_fn = nn.ReLU
+
             policy_kwargs = dict(
                 normalize_images=False,
-                net_arch=[shared_layer_size, dict(vf=[vf_size],
-                                                  pi=[pi_size])],
-                activation_fn = activation_fn,
+                net_arch=[shared_layer_size, dict(vf=vf_size,
+                                                  pi=pi_size)],
+                activation_fn = activation_fct,
                 #features_extractor_class=CustomFExtractor,
                 #features_extractor_kwargs=dict(size=64),
 
                 # last_layer_dim_pi=vf_net_size,
                 # last_layer_dim_vf=pi_net_size
             )
-            policy_kwargs["optimizer_class"] = RMSpropTFLike
-            policy_kwargs["optimizer_kwargs"] = dict(alpha=0.99, eps=1e-5, weight_decay=0)
 
+            if use_rmsprop:
+                policy_kwargs["optimizer_class"] = RMSpropTFLike
+                policy_kwargs["optimizer_kwargs"] = dict(alpha=0.99, eps=1e-5, weight_decay=0)
+            
 
             model = A2C(MlpPolicy, env, device=device,
                         verbose=0,
@@ -191,7 +204,7 @@ def train_ttris(from_scratch, brick_set,
                         gamma=gamma,
                         n_steps=n_steps,
                         policy_kwargs=policy_kwargs,
-                        # use_sde=True,
+                        use_rms_prop=use_rmsprop
                         )
 
             mpol = model.policy
@@ -245,7 +258,7 @@ def train_ttris(from_scratch, brick_set,
         return last_mean_reward
 
     study = optuna.create_study(load_if_exists=True,
-                                study_name="tetris_a2c_10",
+                                study_name="tetris_a2c_15",
                                 sampler=optuna.samplers.QMCSampler(),  # BruteForceSampler(),
                                 direction=StudyDirection.MAXIMIZE,
                                 storage=get_optuna_storage())

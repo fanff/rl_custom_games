@@ -362,12 +362,18 @@ class GroupedActionSpace(CustomTetris):
     def __init__(self,*args,**kwargs):
         CustomTetris.__init__(self,*args,**kwargs)
 
-        t = [[3],
-             [1, 3],
-             [2, 3],
-             [1, 1, 3],
-             [2, 2, 3]
-             ]
+
+        lefts= [[1]*_ for _ in range(1,self.output_width//2 + 1)]
+
+        rights = [[1]*_ for _ in range(1,self.output_width//2 + 1)]
+
+        t=[[3]]
+        for l in lefts:
+            t.append(l+[3])
+
+        for l in rights:
+            t.append(l+[3] ) 
+        
         # 4 rotate
         # 3 push down
         self.allcombo = []
