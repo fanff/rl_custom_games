@@ -194,21 +194,33 @@ class CustomTetris(Env):
 
         self.score += (removed)**2
 
-        white_block_above_4 = np.sum(self.back_board[:-4])
-        self.score -= white_block_above_4 / ((self.output_height-4)*self.output_width)
+        pen = 0
+        for col in range(self.output_width):
+            blocks = False
+            column = self.back_board[:,col]
+            for row in column:
+                if row == 1:
+                    blocks=True
+                elif blocks:
+                    pen+=1
 
-        count_by_row = np.sum(self.back_board[:- 2], 1)
-        for vidx,v in enumerate(count_by_row):
-            if v>0:
-                break
+        self.score -= pen/10
 
-        pen = (self.output_height - vidx) / self.output_height
-        self.score -= pen*v
+        white_block_above_4 = np.sum(self.back_board[:-2])
+        self.score -= white_block_above_4 / ((self.output_height-2)*self.output_width)
+#
+        #count_by_row = np.sum(self.back_board[:- 2], 1)
+        #for vidx,v in enumerate(count_by_row):
+        #    if v>0:
+        #        break
+#
+        #pen = (self.output_height - vidx) / self.output_height
+        #self.score -= pen*v
 
 
 
     def take_brick_on_top(self):  # take a random brick and add it to the board
-        _limit = 8
+        _limit = 6
         white_block_above_limit = np.sum(self.back_board, 1)[:-_limit].sum()
         if white_block_above_limit > 0:
             return self.latest_obs, -1, True, {"new_brick":self.current_brick_idx}
@@ -376,14 +388,14 @@ class GroupedActionSpace(CustomTetris):
         CustomTetris.__init__(self,*args,**kwargs)
 
 
-        lefts= [[1]*_ for _ in range(1,self.output_width//2 )]
+        lefts= reversed([[1]*_ for _ in range(1,self.output_width//2 )])
 
-        rights = [[2]*_ for _ in range(1,self.output_width//2 )]
+        rights = [[2]*_ for _ in range(1,self.output_width//2 +2)]
 
-        t=[[3]]
+        t=[]
         for l in lefts:
             t.append(l+[3])
-
+        t.append([3])
         for l in rights:
             t.append(l+[3] ) 
         

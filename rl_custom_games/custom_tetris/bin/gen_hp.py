@@ -93,6 +93,7 @@ def train_ttris(brick_set,
 
     run = DQN_run
     #run = DQN_cart_pole
+    run=A2C_run
     study = optuna.create_study(sampler=optuna.samplers.QMCSampler(),  # BruteForceSampler(),
                                 direction=StudyDirection.MAXIMIZE,
                                 storage=get_optuna_storage())

@@ -59,7 +59,7 @@ def A2C_run(pick_cat, log_param, loggers, save_path,
     n_steps = pick_cat("n_steps", [5, 8])
 
     gamma = pick_cat("gamma", [0.99])
-    total_timestep = pick_cat("total_timestep", [2_000_000, 5_000_000, 10_000_000])
+    total_timestep = pick_cat("total_timestep", [1_000_000])
 
     shared_layer_size = pick_cat("shared_layer_size", [64, 128])
     vf_size = pick_cat("vf_size", ["[64]", "[64,64]"])
