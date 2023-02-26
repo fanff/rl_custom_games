@@ -22,9 +22,9 @@ import torch as th
 
 @click.command()
 @click.option("--board_height", default=20, type=int, show_default=True)
-@click.option("--board_width", default=4, type=int, show_default=True)
-@click.option("--brick_set", default="basic", type=str, show_default=True)
-@click.option("--max_step", default=50, type=int, show_default=True)
+@click.option("--board_width", default=7, type=int, show_default=True)
+@click.option("--brick_set", default="traditional", type=str, show_default=True)
+@click.option("--max_step", default=500, type=int, show_default=True)
 @click.option("--device", default="cuda", type=str, show_default=True)
 @click.option("--pidx", default=0, type=int, show_default=True)
 def train_ttris(brick_set,

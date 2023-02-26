@@ -22,15 +22,15 @@ def DQN_run(pick_cat, log_param, loggers, save_path,
     use_rmsprop = pick_cat("use_rmsprop", [True, False])
 
     format_as_onechannel = pick_cat("format_as_onechannel", [True])
-    n_envs = pick_cat("n_envs", [8, 16, 24])
+    n_envs = pick_cat("n_envs", [4,8])
     learning_rate = pick_cat("learning_rate",
-                             [0.01,
-                              0.009])  # 0.001  # trial.suggest_float("learning_rate", 0.0001, 0.001)
+                             [0.00001,
+                              0.0001])  
 
     buffer_size = pick_cat("buffer_size", [500_000, 1_000_000])
 
     batch_size = pick_cat("batch_size", [32])
-    total_timestep = pick_cat("total_timestep", [2_000_000, 5_000_000, 10_000_000])
+    total_timestep = pick_cat("total_timestep", [1_000_000])
 
     layer_1 = pick_cat("layer_1", [32,64])
     layer_2 = pick_cat("layer_2", [32,64])
@@ -38,8 +38,9 @@ def DQN_run(pick_cat, log_param, loggers, save_path,
 
     target_update_interval = pick_cat("target_update_interval", [500,1000, 2000, 3000])
 
-    learning_starts = pick_cat("learning_starts", [5000])
-
+    learning_starts = pick_cat("learning_starts", [5000,50000])
+    
+    gamma = pick_cat("gamma", [0.99,0.8,0.9])
 
     env = VecTetris([lambda: GroupedActionSpace(board_height, board_width, brick_set,
                                                 max_step,
@@ -84,6 +85,7 @@ def DQN_run(pick_cat, log_param, loggers, save_path,
                 target_update_interval=target_update_interval,
                 tensorboard_log=save_path,
                 tau=1.0,
+                gamma=gamma,
                 policy_kwargs=policy_kwargs
                 )
 
