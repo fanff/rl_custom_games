@@ -194,11 +194,14 @@ class CustomTetris(Env):
 
         self.score += (removed)**2
 
-        white_block_abovex = np.sum(self.back_board, 1)[:-4].sum()
-        self.score +=  (-  white_block_abovex)/100.0
 
 
     def take_brick_on_top(self):  # take a random brick and add it to the board
+        _limit = 6
+        white_block_above_limit = np.sum(self.back_board[:-_limit], 1).sum()
+        if white_block_above_limit > 0:
+            return self.latest_obs, -1, True, {"new_brick":self.current_brick_idx}
+
 
         self.current_brick_idx , self.current_brick = rand_birck(self.rand_generator,self.brick_set)
         self.brick_location = ((self.BOARD_SHAPE[1] // 2) - 1, 0)
@@ -386,7 +389,7 @@ class GroupedActionSpace(CustomTetris):
 
     def _remakeobs(self,brick_idx,obs):
         brickohe = (self.brick_ohe[brick_idx] * 254)
-        obsflat = obs[6:].flatten()*254
+        obsflat = obs[:-6].flatten()*254
         return np.concatenate([brickohe, obsflat])
     def step(self, action):
 
