@@ -140,7 +140,7 @@ def train_ttris(from_scratch, brick_set,
             listof_tetrisbuilder = [lambda: GroupedActionSpace(board_height, board_width, brick_set, max_step, seed=_,
                                                          format_as_onechannel=format_as_onechannel) for _
                                     in range(n_envs)]
-            evalenv = VecTransposeImage(VecMonitor(VecTetris(listof_tetrisbuilder)))
+            evalenv = (VecMonitor(VecTetris(listof_tetrisbuilder)))
 
             es_cb = StopTrainingOnNoModelImprovement(max_no_improvement_evals=50,
                                                      min_evals=10,
@@ -245,7 +245,7 @@ def train_ttris(from_scratch, brick_set,
         return last_mean_reward
 
     study = optuna.create_study(load_if_exists=True,
-                                study_name="tetris_a2c_9",
+                                study_name="tetris_a2c_10",
                                 sampler=optuna.samplers.QMCSampler(),  # BruteForceSampler(),
                                 direction=StudyDirection.MAXIMIZE,
                                 storage=get_optuna_storage())

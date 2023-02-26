@@ -71,7 +71,8 @@ logger = logging.getLogger("ttenv")
 
 
 def rand_birck(randgen,bset):
-    return randgen.choice(bset)
+    bidx = randgen.randint(0,len(bset)-1)
+    return bidx,bset[bidx]
 
 
 def rotate_brick(inp):
@@ -150,6 +151,7 @@ class CustomTetris(Env):
     # _np_random: Optional[np.random.Generator] = None
 
     def __init__(self, board_height=14, board_width=7, brick_set="traditional", max_step=100, seed=None,format_as_onechannel=True):
+        self.current_brick_idx = None
         self.score = 0
         self.reward_range = (-10, max_step)
         if seed is None:
@@ -198,7 +200,7 @@ class CustomTetris(Env):
 
     def take_brick_on_top(self):  # take a random brick and add it to the board
 
-        self.current_brick = rand_birck(self.rand_generator,self.brick_set)
+        self.current_brick_idx , self.current_brick = rand_birck(self.rand_generator,self.brick_set)
         self.brick_location = ((self.BOARD_SHAPE[1] // 2) - 1, 0)
 
         obs = self.back_board.copy()
@@ -207,12 +209,12 @@ class CustomTetris(Env):
             logger.debug("with new block")
             self.latest_obs = obs
             debug_render(self.latest_obs)
-            return self.latest_obs, self.score, False, {"new_brick":True}
+            return self.latest_obs, self.score, False, {"new_brick":self.current_brick_idx}
         else:
             logger.debug("stop score: %s", self.score)
             self.latest_obs = obs
             debug_render(self.latest_obs)
-            return self.latest_obs, -1, True, {"new_brick":True}
+            return self.latest_obs, -1, True, {"new_brick":self.current_brick_idx}
 
     def step(self, action):
         if self.step_count > self.max_step:
@@ -287,6 +289,8 @@ class CustomTetris(Env):
     def return_formater(self, observation, score, stop, info):
 
         if self.format_as_onechannel:
+
+            return observation, score, stop, info
             # return observation.flatten(),score, stop, info
             obs = Image.fromarray((observation * 127).astype(np.uint8), "L")
 
@@ -369,6 +373,21 @@ class GroupedActionSpace(CustomTetris):
                 self.allcombo.append(r + p)
 
         self.action_space = spaces.Discrete(len(self.allcombo))
+
+        self.brick_ohe = np.eye(len(self.brick_set)).astype(np.uint8)
+        shape = len(self.brick_ohe[0]) + ((self.output_height-6) * self.output_width)
+        self.observation_space = spaces.Box(low=0, high=255,
+                                            shape=(shape,),
+                                            dtype=np.uint8)
+    def reset(self):
+        obs = CustomTetris.reset(self)
+
+        return self._remakeobs(self.current_brick_idx,obs)
+
+    def _remakeobs(self,brick_idx,obs):
+        brickohe = (self.brick_ohe[brick_idx] * 254)
+        obsflat = obs[6:].flatten()*254
+        return np.concatenate([brickohe, obsflat])
     def step(self, action):
 
         suite = self.allcombo[action]
@@ -378,11 +397,12 @@ class GroupedActionSpace(CustomTetris):
             obs,rew,finished,info = CustomTetris.step(self,action_item)
 
             if finished:
-                return obs,cum_rew,finished,info
+                return self._remakeobs(0, obs),cum_rew,finished,info
             else:
                 if "new_brick" in info:
-                    return obs,rew,finished,info
+                    newobs = self._remakeobs(info["new_brick"], obs)
+                    return newobs,rew,finished,info
                 else:
                     cum_rew+=rew
 
-        return obs,cum_rew,finished,info
+        raise("errr")
