@@ -81,7 +81,7 @@ def train_ttris(brick_set,
                     mlflow_output,
                     TensorBoardOutputFormat(save_path)],
             )
-            run = DQN_run
+
             last_mean_reward = run(pick_cat, log_param, loggers,save_path,
                                        board_height, board_width, brick_set, max_step, device
                                        )
@@ -90,8 +90,9 @@ def train_ttris(brick_set,
 
         return last_mean_reward
 
+    run = DQN_run
     study = optuna.create_study(load_if_exists=True,
-                                study_name="tetris_a2c_15",
+                                study_name=str(run)+"1",
                                 sampler=optuna.samplers.QMCSampler(),  # BruteForceSampler(),
                                 direction=StudyDirection.MAXIMIZE,
                                 storage=get_optuna_storage())
