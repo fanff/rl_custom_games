@@ -46,25 +46,25 @@ class MyTestCase(unittest.TestCase):
 
     def test_deepcrack(self):
 
+        for seed in range(3):
+            env = GroupedActionSpace(20, 7, "traditional",
+                                     500,
+                                     seed=seed,
+                                     format_as_onechannel=True)
 
-        env = GroupedActionSpace(20, 10, "traditional",
-                                 500,
-                                 seed=2,
-                                 format_as_onechannel=True)
+            obs = env.reset()
 
-        obs = env.reset()
+            #env.render("print")
+            action_list = []
+            for i in range(100):
+                bestaction, rew = search_action(env, rec=1)
+                if bestaction is None:
+                    break
+                env.step(bestaction)
+                action_list.append(bestaction)
+                #env.render("print")
 
-        env.render("print")
-        action_list = []
-        for i in range(100):
-            bestaction, rew = search_action(env, rec=1)
-            if bestaction is None:
-                break
-            env.step(bestaction)
-            action_list.append(bestaction)
-            env.render("print")
-
-        print(i)
+            print(i)
 def search_action(env, rec=1):
     candidate_action = range(env.action_space.n)
     env_clone = (copy.deepcopy(env) for _ in range(env.action_space.n))
@@ -76,9 +76,9 @@ def search_action(env, rec=1):
             if rec == 0:
                 results.append((candidate_action, rew))
             else:
-                best_subaction,best_subreward = search_action(cloned_env, rec=rec-1)
+                best_subaction, best_subreward = search_action(cloned_env, rec=rec-1)
                 if best_subaction is not None:
-                    results.append((candidate_action, best_subreward))
+                    results.append((candidate_action, rew+best_subreward))
 
     if len(results) == 0:
         return None,-10
@@ -86,5 +86,24 @@ def search_action(env, rec=1):
 
     return best_action,best_rew
 
+
+def re(env):
+    candidate_action = range(env.action_space.n)
+    import itertools
+    for combo in itertools.product((range(env.action_space.n,range(env.action_space.n)))):
+        work_env = copy.deepcopy(env)
+        early_error = False
+        total_rew = 0
+        for ac in combo:
+            obs, rew, finished, dict = work_env.step(ac)
+            total_rew+=rew
+            if finished:
+                early_error = True
+                break
+
+        if early_error:
+            pass
+        else:
+            combo
 if __name__ == '__main__':
     unittest.main()

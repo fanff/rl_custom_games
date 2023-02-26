@@ -13,6 +13,7 @@ from stable_baselines3.common.logger import Logger, TensorBoardOutputFormat, Hum
 from rl_custom_games.custom_tetris.bin.hp_cart_pole import DQN_cart_pole
 from rl_custom_games.custom_tetris.bin.hp_A2C_run import A2C_run
 from rl_custom_games.custom_tetris.bin.hp_dqn_run import DQN_run
+from rl_custom_games.custom_tetris.bin.hp_ppo_run import PPO_run
 from rl_custom_games.mlflow_cb.mlflow_cb import MLflowOutputFormat, ActiveRunWrapper
 from rl_custom_games.optuna_ext.utils import get_optuna_storage
 import torch as th
@@ -94,6 +95,7 @@ def train_ttris(brick_set,
     run = DQN_run
     #run = DQN_cart_pole
     run=A2C_run
+    run = PPO_run
     study = optuna.create_study(sampler=optuna.samplers.QMCSampler(),  # BruteForceSampler(),
                                 direction=StudyDirection.MAXIMIZE,
                                 storage=get_optuna_storage())
