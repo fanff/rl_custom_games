@@ -207,12 +207,12 @@ class CustomTetris(Env):
             logger.debug("with new block")
             self.latest_obs = obs
             debug_render(self.latest_obs)
-            return self.latest_obs, self.score, False, {}
+            return self.latest_obs, self.score, False, {"new_brick":True}
         else:
             logger.debug("stop score: %s", self.score)
             self.latest_obs = obs
             debug_render(self.latest_obs)
-            return self.latest_obs, -1, True, {}
+            return self.latest_obs, -1, True, {"new_brick":True}
 
     def step(self, action):
         if self.step_count > self.max_step:
@@ -380,6 +380,9 @@ class GroupedActionSpace(CustomTetris):
             if finished:
                 return obs,cum_rew,finished,info
             else:
-                cum_rew+=rew
+                if "new_brick" in info:
+                    return obs,rew,finished,info
+                else:
+                    cum_rew+=rew
 
         return obs,cum_rew,finished,info
