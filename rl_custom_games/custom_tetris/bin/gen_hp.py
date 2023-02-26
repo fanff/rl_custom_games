@@ -92,10 +92,8 @@ def train_ttris(brick_set,
         return last_mean_reward
 
     run = DQN_run
-    run = DQN_cart_pole
-    study = optuna.create_study(load_if_exists=True,
-                                study_name=str(run)+"1",
-                                sampler=optuna.samplers.QMCSampler(),  # BruteForceSampler(),
+    #run = DQN_cart_pole
+    study = optuna.create_study(sampler=optuna.samplers.QMCSampler(),  # BruteForceSampler(),
                                 direction=StudyDirection.MAXIMIZE,
                                 storage=get_optuna_storage())
     study.optimize(objective, n_trials=10, n_jobs=1)

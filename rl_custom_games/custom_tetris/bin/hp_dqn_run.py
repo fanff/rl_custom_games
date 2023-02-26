@@ -36,6 +36,9 @@ def DQN_run(pick_cat, log_param, loggers, save_path,
     layer_2 = pick_cat("layer_2", [32,64])
     layer_3 = pick_cat("layer_3", [16,32])
 
+    target_update_interval = pick_cat("target_update_interval", [500,1000, 2000, 3000])
+
+    learning_starts = pick_cat("learning_starts", [5000])
 
 
     env = VecTetris([lambda: GroupedActionSpace(board_height, board_width, brick_set,
@@ -74,11 +77,11 @@ def DQN_run(pick_cat, log_param, loggers, save_path,
                                            learning_rate / 100,
                                            gamma=2),
                 buffer_size=buffer_size,  # 1e6
-                learning_starts=50000,
+                learning_starts=learning_starts,
                 batch_size=batch_size,
-                exploration_final_eps=0.1,
+                exploration_final_eps=0.02,
                 exploration_fraction=0.01,
-                target_update_interval=10000,
+                target_update_interval=target_update_interval,
                 tensorboard_log=save_path,
                 tau=1.0,
                 policy_kwargs=policy_kwargs

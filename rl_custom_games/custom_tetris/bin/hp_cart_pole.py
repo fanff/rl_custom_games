@@ -1,3 +1,4 @@
+import gym
 from stable_baselines3 import DQN
 from stable_baselines3.dqn import MlpPolicy
 from stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback, BaseCallback, \
@@ -30,7 +31,7 @@ def DQN_cart_pole(pick_cat, log_param, loggers, save_path,
     buffer_size = pick_cat("buffer_size", [500_000, 1_000_000])
 
     batch_size = pick_cat("batch_size", [32])
-    total_timestep = pick_cat("total_timestep", [2_000_000, 5_000_000, 10_000_000])
+    total_timestep = pick_cat("total_timestep", [500_000, ])
 
     layer_1 = pick_cat("layer_1", [32,64])
     layer_2 = pick_cat("layer_2", [32,64])
@@ -67,11 +68,11 @@ def DQN_cart_pole(pick_cat, log_param, loggers, save_path,
                                            learning_rate / 100,
                                            gamma=2),
                 buffer_size=buffer_size,  # 1e6
-                learning_starts=50000,
+                learning_starts=1000,
                 batch_size=batch_size,
                 exploration_final_eps=0.1,
                 exploration_fraction=0.01,
-                target_update_interval=10000,
+                target_update_interval=1000,
                 tensorboard_log=save_path,
                 tau=1.0,
                 policy_kwargs=policy_kwargs

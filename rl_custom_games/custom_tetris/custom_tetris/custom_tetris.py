@@ -194,6 +194,8 @@ class CustomTetris(Env):
 
         self.score += (removed)**2
 
+        self.score += 0.1
+
 
 
     def take_brick_on_top(self):  # take a random brick and add it to the board
