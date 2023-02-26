@@ -50,7 +50,7 @@ def PPO_run(pick_cat, log_param, loggers, save_path,
     activation_fct = activation_fct_dict[activation_fct]
 
     format_as_onechannel = pick_cat("format_as_onechannel", [True])
-    n_envs = pick_cat("n_envs", [8, 16, 24])
+    n_envs = pick_cat("n_envs", [8])
     learning_rate = pick_cat("learning_rate",
                              [0.0003,
                               0.0001])  # 0.001  # trial.suggest_float("learning_rate", 0.0001, 0.001)
@@ -83,7 +83,7 @@ def PPO_run(pick_cat, log_param, loggers, save_path,
 
     eval_callback = EvalCallback(evalenv, best_model_save_path=save_path,
                                  n_eval_episodes=40,
-                                 log_path=save_path, eval_freq=300,
+                                 log_path=save_path, eval_freq=500,
                                  deterministic=True, render=False,
                                  callback_after_eval=es_cb
                                  )
@@ -135,7 +135,7 @@ def PPO_run(pick_cat, log_param, loggers, save_path,
     log_param("model.policy", model.policy.__class__.__name__)
     log_param("model.policy.normalize_imgs", model.policy.normalize_images)
 
-    model.learn(log_interval=8,
+    model.learn(log_interval=1,
                 total_timesteps=total_timestep,
                 callback=[eval_callback, ],
                 )

@@ -248,7 +248,7 @@ class CustomTetris(Env):
             return r
         else:
             self.step_count += 1
-        self.score = 0
+        # self.score = 0
 
         if action == 4:  # rotate
             logger.debug("rotate")
