@@ -384,7 +384,7 @@ class GroupedActionSpace(CustomTetris):
         self.action_space = spaces.Discrete(len(self.allcombo))
 
         self.brick_ohe = np.eye(len(self.brick_set)).astype(np.uint8)
-        shape = len(self.brick_ohe[0]) + ((self.output_height-6) * self.output_width)
+        shape = len(self.brick_ohe[0]) + ((6) * self.output_width)
         self.observation_space = spaces.Box(low=0, high=255,
                                             shape=(shape,),
                                             dtype=np.uint8)
