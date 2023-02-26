@@ -197,8 +197,8 @@ class CustomTetris(Env):
 
 
     def take_brick_on_top(self):  # take a random brick and add it to the board
-        _limit = 6
-        white_block_above_limit = np.sum(self.back_board[:-_limit], 1).sum()
+        _limit = 8
+        white_block_above_limit = np.sum(self.back_board, 1)[:-_limit].sum()
         if white_block_above_limit > 0:
             return self.latest_obs, -1, True, {"new_brick":self.current_brick_idx}
 

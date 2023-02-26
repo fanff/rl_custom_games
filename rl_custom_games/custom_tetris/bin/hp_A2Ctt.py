@@ -55,9 +55,9 @@ class CustomFExtractor(BaseFeaturesExtractor):
 @click.option("--from_scratch", default=True, type=bool)
 @click.option("--board_height", default=20, type=int, show_default=True)
 @click.option("--board_width", default=6, type=int, show_default=True)
-@click.option("--brick_set", default="traditional", type=str, show_default=True)
+@click.option("--brick_set", default="basic", type=str, show_default=True)
 @click.option("--max_step", default=50, type=int, show_default=True)
-@click.option("--device", default="cuda", type=str, show_default=True)
+@click.option("--device", default="cpu", type=str, show_default=True)
 @click.option("--pidx", default=0, type=int, show_default=True)
 def train_ttris(from_scratch, brick_set,
                 board_height,
