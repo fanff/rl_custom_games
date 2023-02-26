@@ -395,7 +395,7 @@ class GroupedActionSpace(CustomTetris):
 
     def _remakeobs(self,brick_idx,obs):
         brickohe = (self.brick_ohe[brick_idx] * 254)
-        obsflat = obs[:-6].flatten()*254
+        obsflat = obs[-6:].flatten()*254
         return np.concatenate([brickohe, obsflat])
     def step(self, action):
 
