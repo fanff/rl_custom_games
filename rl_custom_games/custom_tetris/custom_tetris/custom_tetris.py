@@ -70,9 +70,9 @@ PRINTMODE = False
 logger = logging.getLogger("ttenv")
 
 
-def rand_birck(randgen,bset):
-    bidx = randgen.randint(0,len(bset)-1)
-    return bidx,bset[bidx]
+def rand_birck(randgen, bset):
+    bidx = randgen.randint(0, len(bset) - 1)
+    return bidx, bset[bidx]
 
 
 def rotate_brick(inp):
@@ -148,14 +148,20 @@ class CustomTetris(Env):
 
     spec = EnvSpec("FgTetris-v0")
 
-    # _np_random: Optional[np.random.Generator] = None
 
-    def __init__(self, board_height=14, board_width=7, brick_set="traditional", max_step=100, seed=None,format_as_onechannel=True):
+    def __init__(self, board_height=14,
+                 board_width=7,
+                 brick_set="traditional",
+                 max_step=100,
+                 seed=None,
+                 format_as_onechannel=True,
+
+                 fail_limit=None):
         self.current_brick_idx = None
         self.score = 0
-        self.reward_range = (-10, max_step)
+        self.reward_range = (-300, max_step)
         if seed is None:
-            self.seed = random.randint(0,9999999)
+            self.seed = random.randint(0, 9999999)
         else:
             self.seed = seed
         self.rand_generator = random.Random(self.seed)
@@ -166,6 +172,11 @@ class CustomTetris(Env):
         self.brick_location = None
         self.current_brick = None
         self.back_board = np.zeros(shape=self.BOARD_SHAPE, dtype=np.int8)
+        if fail_limit == None:
+            self.fail_limit = board_height
+        else:
+            self.fail_limit = fail_limit
+
         self.take_brick_on_top()
 
         self.output_height = board_height
@@ -183,6 +194,7 @@ class CustomTetris(Env):
         self.max_step = max_step
 
 
+
     def fix_on_back_board(self):
         # self.score += 0.01
         obs = self.back_board.copy()
@@ -191,42 +203,39 @@ class CustomTetris(Env):
         #
         self.back_board, removed = check_rows(self.back_board)
 
+        self.score += (removed) ** 2
 
-        self.score += (removed)**2
-
-        pen = 0
-        for col in range(self.output_width):
-            blocks = False
-            column = self.back_board[:,col]
-            for row in column:
-                if row == 1:
-                    blocks=True
-                elif blocks:
-                    pen+=1
-
-        self.score -= pen/10
-
-        white_block_above_4 = np.sum(self.back_board[:-2])
-        self.score -= white_block_above_4 / ((self.output_height-2)*self.output_width)
+        #pen = 0
+        #for col in range(self.output_width):
+        #    blocks = False
+        #    column = self.back_board[:, col]
+        #    for row in column:
+        #        if row == 1:
+        #            blocks = True
+        #        elif blocks:
+        #            pen += 1
+##
+        #self.score -= pen / 10
 #
-        #count_by_row = np.sum(self.back_board[:- 2], 1)
-        #for vidx,v in enumerate(count_by_row):
-        #    if v>0:
-        #        break
-#
-        #pen = (self.output_height - vidx) / self.output_height
-        #self.score -= pen*v
+        #white_block_above_4 = np.sum(self.back_board[:-2])
+        #self.score -= white_block_above_4 / ((self.output_height - 2) * self.output_width)
 
-
+    #
+    # count_by_row = np.sum(self.back_board[:- 2], 1)
+    # for vidx,v in enumerate(count_by_row):
+    #    if v>0:
+    #        break
+    #
+    # pen = (self.output_height - vidx) / self.output_height
+    # self.score -= pen*v
 
     def take_brick_on_top(self):  # take a random brick and add it to the board
-        _limit = 6
-        white_block_above_limit = np.sum(self.back_board, 1)[:-_limit].sum()
+
+        white_block_above_limit = np.sum(self.back_board, 1)[:-self.fail_limit].sum()
         if white_block_above_limit > 0:
-            return self.latest_obs, -1, True, {"new_brick":self.current_brick_idx}
+            return self.latest_obs, -1, True, {"new_brick": self.current_brick_idx}
 
-
-        self.current_brick_idx , self.current_brick = rand_birck(self.rand_generator,self.brick_set)
+        self.current_brick_idx, self.current_brick = rand_birck(self.rand_generator, self.brick_set)
         self.brick_location = ((self.BOARD_SHAPE[1] // 2) - 1, 0)
 
         obs = self.back_board.copy()
@@ -235,12 +244,12 @@ class CustomTetris(Env):
             logger.debug("with new block")
             self.latest_obs = obs
             debug_render(self.latest_obs)
-            return self.latest_obs, self.score, False, {"new_brick":self.current_brick_idx}
+            return self.latest_obs, self.score, False, {"new_brick": self.current_brick_idx}
         else:
             logger.debug("stop score: %s", self.score)
             self.latest_obs = obs
             debug_render(self.latest_obs)
-            return self.latest_obs, -1, True, {"new_brick":self.current_brick_idx}
+            return self.latest_obs, -1, True, {"new_brick": self.current_brick_idx}
 
     def step(self, action):
         if self.step_count > self.max_step:
@@ -248,7 +257,7 @@ class CustomTetris(Env):
             return r
         else:
             self.step_count += 1
-        # self.score = 0
+        self.score = 0
 
         if action == 4:  # rotate
             logger.debug("rotate")
@@ -320,23 +329,23 @@ class CustomTetris(Env):
             # return observation.flatten(),score, stop, info
             obs = Image.fromarray((observation * 127).astype(np.uint8), "L")
 
-            obs = obs.resize((self.output_width, self.output_height), resample=Resampling.NEAREST, box=None, reducing_gap=None)
+            obs = obs.resize((self.output_width, self.output_height), resample=Resampling.NEAREST, box=None,
+                             reducing_gap=None)
             # obs.save(f"{time.time()}.png")
             obs = np.uint8(obs)
 
             return (np.expand_dims(obs, 2), score, stop, info)
         else:
 
-            obs=observation.astype(np.uint8)
+            obs = observation.astype(np.uint8)
             n_values = 3
-            buff= np.eye(n_values)[obs]
+            buff = np.eye(n_values)[obs]
             return (buff, score, stop, info)
-
 
     def render(self, mode="print"):
         lines = debug_print(self.latest_obs)
         lines[-1] = "rew: %.2f" % self.score
-        if mode=="txt":
+        if mode == "txt":
             return lines
         else:
             print("\n".join(lines))
@@ -384,22 +393,21 @@ class VecTetris(DummyVecEnv):
 
 class GroupedActionSpace(CustomTetris):
 
-    def __init__(self,*args,**kwargs):
-        CustomTetris.__init__(self,*args,**kwargs)
+    def __init__(self, *args, **kwargs):
+        CustomTetris.__init__(self, *args, **kwargs)
 
+        lefts = reversed([[1] * _ for _ in range(1, self.output_width // 2)])
 
-        lefts= reversed([[1]*_ for _ in range(1,self.output_width//2 )])
+        rights = [[2] * _ for _ in range(1, self.output_width // 2 + 2)]
 
-        rights = [[2]*_ for _ in range(1,self.output_width//2 +2)]
-
-        t=[]
+        t = []
         for l in lefts:
-            t.append(l+[3])
+            t.append(l + [3])
         t.append([3])
         for l in rights:
-            t.append(l+[3] ) 
-        
-        # 4 rotate
+            t.append(l + [3])
+
+            # 4 rotate
         # 3 push down
         self.allcombo = []
         for r in [[], [4], [4, 4], [4, 4, 4]]:
@@ -409,34 +417,36 @@ class GroupedActionSpace(CustomTetris):
         self.action_space = spaces.Discrete(len(self.allcombo))
 
         self.brick_ohe = np.eye(len(self.brick_set)).astype(np.uint8)
-        shape = len(self.brick_ohe[0]) + ((6) * self.output_width)
+        shape = len(self.brick_ohe[0]) + (self.fail_limit * self.output_width)
         self.observation_space = spaces.Box(low=0, high=255,
                                             shape=(shape,),
                                             dtype=np.uint8)
+
     def reset(self):
         obs = CustomTetris.reset(self)
 
-        return self._remakeobs(self.current_brick_idx,obs)
+        return self._remakeobs(self.current_brick_idx, obs)
 
-    def _remakeobs(self,brick_idx,obs):
+    def _remakeobs(self, brick_idx, obs):
         brickohe = (self.brick_ohe[brick_idx] * 254)
-        obsflat = obs[-6:].flatten()*254
+        obsflat = obs[-self.fail_limit:].flatten() * 254
         return np.concatenate([brickohe, obsflat])
+
     def step(self, action):
 
         suite = self.allcombo[action]
 
         cum_rew = 0
         for action_item in suite:
-            obs,rew,finished,info = CustomTetris.step(self,action_item)
+            obs, rew, finished, info = CustomTetris.step(self, action_item)
 
             if finished:
-                return self._remakeobs(0, obs),cum_rew,finished,info
+                return self._remakeobs(0, obs), cum_rew, finished, info
             else:
                 if "new_brick" in info:
                     newobs = self._remakeobs(info["new_brick"], obs)
-                    return newobs,rew,finished,info
+                    return newobs, rew, finished, info
                 else:
-                    cum_rew+=rew
+                    cum_rew += rew
 
-        raise("errr")
+        raise ("errr")

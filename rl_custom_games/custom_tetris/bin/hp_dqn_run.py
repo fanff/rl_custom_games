@@ -17,47 +17,50 @@ from torch import nn
 def DQN_run(pick_cat, log_param, loggers, save_path,
             board_height, board_width, brick_set, max_step, device
             ):
-    rand = pick_cat("rand", [42, 314])
 
-    use_rmsprop = pick_cat("use_rmsprop", [True, False])
+    use_rmsprop = pick_cat("use_rmsprop", [True])
 
     format_as_onechannel = pick_cat("format_as_onechannel", [True])
-    n_envs = pick_cat("n_envs", [4,8])
+    n_envs = pick_cat("n_envs", [4])
     learning_rate = pick_cat("learning_rate",
-                             [0.00001,
-                              0.0001])  
+                             [0.001,])
 
-    buffer_size = pick_cat("buffer_size", [500_000, 1_000_000])
+    learning_rate_div = pick_cat("learning_rate_div",
+                             [10])
 
-    batch_size = pick_cat("batch_size", [32])
-    total_timestep = pick_cat("total_timestep", [1_000_000])
+    buffer_size = pick_cat("buffer_size", [1_000_000])
 
-    layer_1 = pick_cat("layer_1", [32,64])
-    layer_2 = pick_cat("layer_2", [32,64])
-    layer_3 = pick_cat("layer_3", [16,32])
+    batch_size = pick_cat("batch_size", [128])
+    total_timestep = pick_cat("total_timestep", [20_000_000])
 
-    target_update_interval = pick_cat("target_update_interval", [500,1000, 2000, 3000])
+    layer_1 = pick_cat("layer_1", [256,])
+    layer_2 = pick_cat("layer_2", [256,])
+    layer_3 = pick_cat("layer_3", [128,])
 
-    learning_starts = pick_cat("learning_starts", [5000,50000])
+    target_update_interval = pick_cat("target_update_interval", [300])
+
+    learning_starts = pick_cat("learning_starts", [50000])
     
-    gamma = pick_cat("gamma", [0.99,0.8,0.9])
-
+    gamma = pick_cat("gamma", [0.99])
+    fail_limit = 10
     env = VecTetris([lambda: GroupedActionSpace(board_height, board_width, brick_set,
                                                 max_step,
-                                                format_as_onechannel=format_as_onechannel)] * n_envs)
+                                                format_as_onechannel=format_as_onechannel,
+                                                fail_limit=fail_limit)] * n_envs)
 
     listof_tetrisbuilder = [lambda: GroupedActionSpace(board_height, board_width, brick_set, max_step, seed=_,
-                                                       format_as_onechannel=format_as_onechannel) for _
+                                                       format_as_onechannel=format_as_onechannel,
+                                                       fail_limit=fail_limit) for _
                             in range(n_envs)]
     evalenv = (VecMonitor(VecTetris(listof_tetrisbuilder)))
 
-    es_cb = StopTrainingOnNoModelImprovement(max_no_improvement_evals=150,
-                                             min_evals=10,
+    es_cb = StopTrainingOnNoModelImprovement(max_no_improvement_evals=20000,
+                                             min_evals=50,
                                              verbose=1)
 
     eval_callback = EvalCallback(evalenv, best_model_save_path=save_path,
-                                 n_eval_episodes=40,
-                                 log_path=save_path, eval_freq=300,
+                                 n_eval_episodes=20,
+                                 log_path=save_path, eval_freq=600,
                                  deterministic=True, render=False,
                                  callback_after_eval=es_cb
                                  )
@@ -75,13 +78,13 @@ def DQN_run(pick_cat, log_param, loggers, save_path,
     model = DQN(MlpPolicy, env, device=device,
                 verbose=0,
                 learning_rate=pow_schedule(learning_rate,
-                                           learning_rate / 100,
+                                           learning_rate / learning_rate_div,
                                            gamma=2),
                 buffer_size=buffer_size,  # 1e6
                 learning_starts=learning_starts,
                 batch_size=batch_size,
-                exploration_final_eps=0.02,
-                exploration_fraction=0.01,
+                exploration_final_eps=0.05,
+                exploration_fraction=0.1,
                 target_update_interval=target_update_interval,
                 tensorboard_log=save_path,
                 tau=1.0,

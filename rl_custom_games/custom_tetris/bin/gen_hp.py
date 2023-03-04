@@ -93,13 +93,13 @@ def train_ttris(brick_set,
         return last_mean_reward
 
     run = DQN_run
-    #run = DQN_cart_pole
-    run=A2C_run
-    run = PPO_run
+    # run = DQN_cart_pole
+    # run = A2C_run
+    # run = PPO_run
     study = optuna.create_study(sampler=optuna.samplers.QMCSampler(),  # BruteForceSampler(),
                                 direction=StudyDirection.MAXIMIZE,
                                 storage=get_optuna_storage())
-    study.optimize(objective, n_trials=10, n_jobs=1)
+    study.optimize(objective, n_trials=100, n_jobs=1)
 
 
 if __name__ == "__main__":
