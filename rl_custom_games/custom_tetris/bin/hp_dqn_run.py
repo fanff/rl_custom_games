@@ -35,7 +35,8 @@ def DQN_run(pick_cat, log_param, loggers, save_path,
 
     layer_1 = pick_cat("layer_1", [256,])
     layer_2 = pick_cat("layer_2", [256,])
-    layer_3 = pick_cat("layer_3", [128,])
+    layer_3 = pick_cat("layer_3", [256,])
+    layer_4 = pick_cat("layer_4", [256,])
 
     target_update_interval = pick_cat("target_update_interval", [300])
 
@@ -59,15 +60,15 @@ def DQN_run(pick_cat, log_param, loggers, save_path,
                                              verbose=1)
 
     eval_callback = EvalCallback(evalenv, best_model_save_path=save_path,
-                                 n_eval_episodes=20,
-                                 log_path=save_path, eval_freq=600,
+                                 n_eval_episodes=1,
+                                 log_path=save_path, eval_freq=1000,
                                  deterministic=True, render=False,
                                  callback_after_eval=es_cb
                                  )
 
     policy_kwargs = dict(
         normalize_images=False,
-        net_arch=[layer_1, layer_2,layer_3],
+        net_arch=[layer_1, layer_2,layer_3,layer_4,64],
 
     )
 
