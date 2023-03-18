@@ -18,29 +18,29 @@ def DQN_run(pick_cat, log_param, loggers, save_path,
             board_height, board_width, brick_set, max_step, device
             ):
 
-    use_rmsprop = pick_cat("use_rmsprop", [True])
+    use_rmsprop = pick_cat("use_rmsprop", [False])
 
     format_as_onechannel = pick_cat("format_as_onechannel", [True])
     n_envs = pick_cat("n_envs", [4])
     learning_rate = pick_cat("learning_rate",
-                             [0.001,])
+                             [0.0001,])
 
     learning_rate_div = pick_cat("learning_rate_div",
                              [10])
 
-    buffer_size = pick_cat("buffer_size", [1_000_000])
+    buffer_size = pick_cat("buffer_size", [10_000_000])
 
-    batch_size = pick_cat("batch_size", [128])
+    batch_size = pick_cat("batch_size", [128,64])
     total_timestep = pick_cat("total_timestep", [20_000_000])
 
-    layer_1 = pick_cat("layer_1", [256,])
+    layer_1 = pick_cat("layer_1", [512,])
     layer_2 = pick_cat("layer_2", [256,])
     layer_3 = pick_cat("layer_3", [256,])
     layer_4 = pick_cat("layer_4", [256,])
 
-    target_update_interval = pick_cat("target_update_interval", [300])
+    target_update_interval = pick_cat("target_update_interval", [100000])
 
-    learning_starts = pick_cat("learning_starts", [50000])
+    learning_starts = pick_cat("learning_starts", [5000])
     
     gamma = pick_cat("gamma", [0.99])
     fail_limit = 10
@@ -68,7 +68,7 @@ def DQN_run(pick_cat, log_param, loggers, save_path,
 
     policy_kwargs = dict(
         normalize_images=False,
-        net_arch=[layer_1, layer_2,layer_3,layer_4,64],
+        net_arch=[layer_1,layer_2,24],
 
     )
 
@@ -77,7 +77,7 @@ def DQN_run(pick_cat, log_param, loggers, save_path,
         policy_kwargs["optimizer_kwargs"] = dict(alpha=0.99, eps=1e-5, weight_decay=0)
 
     model = DQN(MlpPolicy, env, device=device,
-                verbose=0,
+                verbose=2,
                 learning_rate=pow_schedule(learning_rate,
                                            learning_rate / learning_rate_div,
                                            gamma=2),
@@ -105,9 +105,10 @@ def DQN_run(pick_cat, log_param, loggers, save_path,
     log_param("model", model.__class__.__name__)
     log_param("model.policy", model.policy.__class__.__name__)
 
-    model.learn(log_interval=8,
+    model.learn(log_interval=24,
                 total_timesteps=total_timestep,
                 callback=[eval_callback, ],
+
                 )
 
     last_mean_reward = eval_callback.last_mean_reward

@@ -313,8 +313,6 @@ class CustomTetris(Env):
             seed: Optional[int] = None,
             options: Optional[dict] = None,
     ):
-
-        logger.debug("reset!")
         self.score = 0
         self.step_count = 0
         self.back_board = np.zeros(shape=self.BOARD_SHAPE, dtype=np.int8)
